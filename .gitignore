@@ -1,0 +1,16 @@
+# Dependencies and local build output that must not be committed.
+node_modules/
+*.tgz
+dist/
+coverage/
+
+# Editor and OS noise.
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# lib/ is deliberately NOT ignored: it is the built client+host bundle this package ships, and
+# committing it is what lets the plugin be installed from GitHub without a build step. Run
+# `npm run build` after changing anything under src/ and commit the result (CI checks it).

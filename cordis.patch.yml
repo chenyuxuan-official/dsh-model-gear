@@ -1,0 +1,5 @@
+# dsh-model-gear — inserts this plugin into a profile's layer stack.
+# Only the model-gear panel is mounted; the native UI is left in place.
+- insert:
+    - id: dsh-model-gear
+      name: dsh-model-gear

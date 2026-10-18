@@ -1,0 +1,1988 @@
+/* dsh-model-gear: the model-gear panel only, extracted from dsh-codex-ui (MIT).
+   Classes: 59; rules: 289; media blocks: 7; keyframes: 6. */
+/* Theme tokens. Upstream declares these on `html[data-chatgpt-ui]` and
+   `body[data-ds-dark-theme]` — attribute selectors, which the class-name extraction
+   dropped, leaving `background: var(--cg-page)` unresolvable and the popover
+   see-through. They are restored here, restricted to the tokens the panel uses. */
+html[data-chatgpt-ui] {
+  --cg-page: #ffffff;
+  --cg-text: #2f3134;
+  --cg-muted: #82848a;
+  --cg-hover: #f0f0f0;
+}
+
+body[data-ds-dark-theme] {
+  --cg-page: #212121;
+  --cg-text: #ececec;
+  --cg-muted: #929292;
+  --cg-hover: #303030;
+}
+
+.cg-model-root { position: relative; min-width: 0; color: var(--cg-text); }
+
+/* The two orchestration inks as custom properties, so the component can paint a bolt inline without
+   having to know which theme is active. An inline colour is the one declaration no attribute-keyed
+   rule and no stylesheet swap can undo, which is what the collapsed trigger's bolt needed: keyed
+   only through the cascade, it fell back to purple for any frame where a `data-*` rule had not
+   landed, and that read as a purple/gold flicker. */
+.cg-model-root { --cg-fast-ink: #8a4ff0; --cg-tree-ink: #e8a317; }
+body[data-ds-dark-theme] .cg-model-root { --cg-fast-ink: #bb74ff; --cg-tree-ink: #f0b429; }
+
+.cg-model-trigger { display: inline-flex; align-items: center; gap: 4px; max-width: min(300px,38vw); height: 28px; padding: 0 5px; border: 0; border-radius: 8px; background: transparent; color: var(--cg-text); cursor: pointer; font-size: 12px; white-space: nowrap; }
+
+.cg-model-trigger:hover { background: var(--cg-hover); }
+
+.cg-model-trigger:disabled { opacity: .5; cursor: default; }
+
+.cg-model-trigger-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+.cg-model-trigger-effort { color: var(--cg-muted); }
+
+.cg-model-trigger-effort[data-ultra="true"] { color: #9b50ff; }
+
+/* Max's label takes the light purple end of the ramp — in the composer label and in the
+
+   popover's headline. Only the text: the other accents keep their own colour roles. */
+
+.cg-model-root[data-effort="xhigh"] .cg-model-trigger-effort,
+
+.cg-model-root[data-effort="max"] .cg-model-trigger-effort,
+
+.cg-model-popover[data-effort="xhigh"] .cg-model-summary strong,
+
+.cg-model-popover[data-effort="max"] .cg-model-summary strong { color: #a273f2; }
+
+body[data-ds-dark-theme] .cg-model-root[data-effort="xhigh"] .cg-model-trigger-effort,
+
+body[data-ds-dark-theme] .cg-model-root[data-effort="max"] .cg-model-trigger-effort,
+
+body[data-ds-dark-theme] .cg-model-popover[data-effort="xhigh"] .cg-model-summary strong,
+
+body[data-ds-dark-theme] .cg-model-popover[data-effort="max"] .cg-model-summary strong { color: #c9aaff; }
+
+.cg-model-trigger svg { color: var(--cg-muted); width: 12px; height: 12px; flex: none; }
+
+.cg-model-popover { --cg-effort-color: #3982fa; color: var(--cg-text); box-sizing: border-box; width: 256px; position: absolute; z-index: 60; right: 0; bottom: calc(100% + 10px); padding: 11px 12px 12px; border: 1px solid #e6e6e6; border-radius: 19px; background: var(--cg-page); box-shadow: 0 6px 14px #0000000c; }
+
+.cg-model-popover[data-ultra="true"] { --cg-effort-color: #9b50ff; }
+
+/* A model row is a selector plus its rename affordance. The button is a sibling of the selector (a
+
+   button inside a button is invalid markup) and stays out of the way: its box is always reserved so
+
+   nothing shifts, but it only becomes visible under the pointer. It carries no colour of its own —
+
+   an accent tinted by the current effort tier looked like it belonged to a different surface — so it
+
+   is the row's muted tone, and the row's own text tone under the pointer. */
+
+.cg-model-row { display: flex; align-items: center; gap: 2px; }
+
+.cg-model-row .cg-model-option { flex: 1 1 auto; min-width: 0; }
+
+.cg-model-rename { display: flex; flex: none; width: 20px; height: 20px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; opacity: 0; color: var(--cg-muted); cursor: pointer; transition: opacity 120ms ease; }
+
+.cg-model-row:hover .cg-model-rename, .cg-model-rename:focus-visible { opacity: .45; }
+
+.cg-model-rename:hover, .cg-model-rename:focus-visible { opacity: .9; color: var(--cg-text); }
+
+/* The rename field takes the name's own place inside the row: no frame, the row's type, and it
+
+   wraps — a long name makes the box taller instead of running off the edge. The two glyphs at its
+
+   ends are the row's muted tone with no fill, so they read as part of the row, not as a form. */
+
+.cg-model-row-editing { gap: 2px; align-items: flex-start; }
+
+.cg-model-alias-input { box-sizing: border-box; flex: 1 1 auto; min-width: 0; margin: 0 2px; padding: 2px 2px 3px; border: 0; border-bottom: 1px solid var(--cg-effort-color); border-radius: 0; background: transparent; color: var(--cg-text); font: inherit; font-size: 13px; line-height: 18px; /* No height cap at all: a long name keeps making the field taller, which is what "no limit" has to mean. The list around it is the only thing that scrolls. */ overflow: hidden; resize: none; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.cg-model-alias-input:focus { outline: none; }
+
+.cg-model-alias-input::placeholder { color: var(--cg-muted); }
+
+/* The two glyphs are the same weight and the same tone: a bright tick next to a dim cross read as
+
+   two different kinds of control, which is what made the pair look foreign in a list of names. */
+
+.cg-model-alias-save, .cg-model-alias-cancel { display: flex; flex: none; width: 20px; height: 20px; margin-top: 1px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--cg-muted); opacity: .75; cursor: pointer; }
+
+.cg-model-alias-save:hover, .cg-model-alias-cancel:hover { color: var(--cg-text); opacity: 1; }
+
+/* The bolt and the reset are absolute in this row, but the summary is centred between them. At the
+   summary's 190px max it starts 20px from the content edge, which is 6px under the bolt's 26px box,
+   and the model name then starts 2px from the bolt — inside its 5px glow. The side padding reserves
+   the bolt's lane so the name never reaches it, while the summary stays centred. */
+
+.cg-model-top { position: relative; display: flex; justify-content: center; align-items: center; min-height: 20px; padding: 0 28px; color: var(--cg-effort-color); }
+
+/* Reaching Ultra stands the three controls down for a moment and puts the cost notice in
+
+   their row — the same exchange the original client makes. They fade rather than unmount so
+
+   the popover keeps its height and nothing jumps when the notice arrives or leaves. */
+
+.cg-model-ultra-notice {
+
+  position: absolute; inset: 0; display: grid; place-items: center;
+
+  color: #a273f2; font-size: 12px; letter-spacing: .2px; white-space: nowrap;
+
+  opacity: 0; visibility: hidden; pointer-events: none;
+
+  transition: opacity 180ms ease, visibility 0s linear 180ms;
+
+}
+
+.cg-model-popover[data-notice="true"] .cg-model-ultra-notice {
+
+  opacity: 1; visibility: visible;
+
+  transition: opacity 180ms ease, visibility 0s linear 0s;
+
+}
+
+.cg-model-popover[data-notice="true"] .cg-model-zap,
+
+.cg-model-popover[data-notice="true"] .cg-model-summary,
+
+.cg-model-popover[data-notice="true"] .cg-model-reset {
+
+  opacity: 0; visibility: hidden;
+
+  transition: opacity 180ms ease, visibility 0s linear 180ms;
+
+}
+
+.cg-model-popover .cg-model-zap,
+
+.cg-model-popover .cg-model-summary,
+
+.cg-model-popover .cg-model-reset { transition: opacity 180ms ease, visibility 0s linear 0s; }
+
+body[data-ds-dark-theme] .cg-model-ultra-notice { color: #c9aaff; }
+
+.cg-model-top strong { font-size: 14px; font-weight: 600; }
+
+.cg-model-zap { position: absolute; left: 0; top: 1px; width: 16px; height: 16px; color: var(--cg-effort-color); }
+
+.cg-model-reset { position: absolute; right: -2px; top: -2px; display: grid; place-items: center; width: 24px; height: 24px; padding: 4px; border: 0; border-radius: 50%; background: transparent; color: var(--cg-muted); cursor: pointer; }
+
+.cg-model-reset:hover { background: var(--cg-hover); }
+
+.cg-model-reset svg { width: 16px; height: 16px; }
+
+.cg-model-choice { display: flex; justify-content: center; align-items: center; gap: 2px; width: 100%; height: 20px; padding: 0; margin: 0 0 10px; border: 0; background: none; color: var(--cg-muted); font-size: 12px; cursor: pointer; }
+
+.cg-model-choice svg { width: 11px; height: 11px; }
+
+.cg-model-slider-shell { position: relative; height: 28px; margin: 0; border-radius: 20px; background: #e8e6e8; box-shadow: inset 0 0 0 1px #00000004; }
+
+/* The pill is deliberately thinner than the shell: the knob (24px) has to overhang it, or a circle and a
+
+   24px track of the same height read as one flush shape rather than a circle on a track. */
+
+.cg-model-slider-fill { position: absolute; left: 0; top: 4px; height: 20px; border-radius: 10px; pointer-events: none; background: var(--cg-effort-color); }
+
+.cg-model-popover[data-ultra="true"] .cg-model-slider-fill { background: linear-gradient(95deg,#5055f5,#bb74ff); }
+
+.cg-model-slider-dots { position: absolute; inset: 0 12px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; z-index: 2; }
+
+.cg-model-slider-dots span { width: 4px; height: 4px; border-radius: 50%; background: #b7b4b7; }
+
+/* The input is the drag surface and keeps the keyboard behaviour, but it is not the *painted* control:
+
+   the plugin draws the track, the fill, the tier dots and the round knob itself.
+
+   `opacity: 0` rather than styling the thumb pseudo-element, because that is the only way that does not
+
+   depend on the browser honouring `appearance: none` on `::-webkit-slider-thumb`. In the owner's build
+
+   it did not: the native widget kept painting a white rounded square at the value position while
+
+   ignoring `background: transparent` on that pseudo-element. Opacity affects the whole native widget,
+
+   whatever it decides to draw, and it does not affect hit testing — the slider still drags and still
+
+   takes arrow keys. Every white box this plugin owns is circular by construction (`.cg-model-thumb` is
+
+   24x24 with `border-radius: 50%`), so the square was never ours to round.
+
+   The focus ring moves to the shell, since an invisible input cannot show one. */
+
+.cg-model-slider { appearance: none; -webkit-appearance: none; box-sizing: border-box; position: relative; width: 100%; height: 28px; margin: 0; background: transparent; cursor: pointer; display: block; border: 0; padding: 0; opacity: 0; }
+
+.cg-model-slider-shell:has(.cg-model-slider:focus-visible) { outline: 2px solid #3982fa; outline-offset: 4px; }
+
+/* The plugin draws its own knob (`.cg-model-thumb`), so the input's own thumb is made *invisible*
+
+   rather than styled. Reason, observed: with `appearance: none` only declared unprefixed, some WebKit
+
+   builds never apply it to the `::-webkit-slider-thumb` pseudo-element, and the native control kept
+
+   painting a small white rounded square on top of our round knob — the "white square" the owner asked
+
+   about. `border-radius` could never have fixed that, because the square was not our element. The
+
+   knob itself is still rendered whenever the slider is, so nothing becomes invisible by accident. */
+
+.cg-model-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; box-shadow: none; }
+
+.cg-model-slider::-moz-range-thumb { width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; box-shadow: none; }
+
+.cg-model-slider:disabled { cursor: default; opacity: .6; }
+
+.cg-model-catalog { display: flex; flex-direction: column; max-height: 260px; overflow: auto; gap: 3px; padding: 2px 0 0; }
+
+.cg-model-provider { color: var(--cg-muted); font-size: 11px; padding: 6px 4px; }
+
+.cg-model-option { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 8px 7px; border: 0; border-radius: 8px; background: none; color: var(--cg-text); font-size: 12px; text-align: left; cursor: pointer; }
+
+.cg-model-option:hover,.cg-model-option:focus-visible { background: var(--cg-hover); }
+
+.cg-model-option svg { width: 14px; height: 14px; flex: none; }
+
+.cg-model-error { font-size: 11px; color: #c54545; line-height: 16px; margin: 8px 0 0; }
+
+.cg-model-message { font-size: 12px; color: var(--cg-muted); text-align: center; margin: 8px 0; }
+
+body[data-ds-dark-theme] .cg-model-popover { border-color: #444; }
+
+body[data-ds-dark-theme] .cg-model-slider-shell { background: #494649; }
+
+.cg-model-search { box-sizing: border-box; width: 100%; font-size: 12px; padding: 8px; margin: 4px 0; color: var(--cg-text); background: var(--cg-page); border: 1px solid #ddd; border-radius: 8px; }
+
+.cg-model-top { min-height: 40px; margin-bottom: 10px; }
+
+.cg-model-summary { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 102px; max-width: 190px; height: 40px; padding: 3px 8px; border: 0; border-radius: 7px; background: transparent; color: var(--cg-effort-color); cursor: pointer; }
+
+.cg-model-summary:hover,.cg-model-summary:focus-visible { background: #f1f1f3; }
+
+.cg-model-summary-name { display: flex; align-items: center; justify-content: center; max-width: 100%; color: #6b6b6b; font-size: 12px; line-height: 16px; white-space: nowrap; }
+
+.cg-model-summary-name svg { width: 11px; height: 11px; flex: none; }
+
+.cg-model-reset { border-radius: 7px; }
+
+.cg-model-reset:hover,.cg-model-reset:focus-visible { background: var(--cg-hover); }
+
+.cg-model-tooltip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); padding: 7px 12px; border-radius: 13px; background: #f2f4f7; color: #33353b; font-size: 12px; line-height: 16px; white-space: nowrap; box-shadow: 0 5px 14px #0002; pointer-events: none; }
+
+.cg-model-reset:hover .cg-model-tooltip,.cg-model-reset:focus-visible .cg-model-tooltip { display: block; }
+
+body[data-ds-dark-theme] .cg-model-summary:hover,body[data-ds-dark-theme] .cg-model-summary:focus-visible,body[data-ds-dark-theme] .cg-model-reset:hover,body[data-ds-dark-theme] .cg-model-reset:focus-visible { background: #404043; }
+
+.cg-model-root:has(.cg-model-popover) { z-index: 100; }
+
+.cg-model-popover { padding-bottom: 16px; background-color: var(--cg-page); isolation: isolate; }
+
+.cg-model-reset { box-sizing: border-box; padding: 4px; }
+
+.cg-model-reset svg { display: block; flex: none; width: 16px; height: 16px; overflow: visible; }
+
+.cg-model-slider-shell { margin-bottom: 2px; }
+
+/* The knob is positioned with `translate: calc((100cqw - 24px) * ratio)`, so this element has to be the
+
+   container those `cqw` units resolve against. Without `container-type` the unit falls back to the
+
+   *viewport* width: the knob then travels one screen-width to the right and leaves the popover entirely —
+
+   the "圆点飞到哪里去了" report. `inline-size` (not `size`) because only the width is queried, and a
+
+   `size` container would have to be given an explicit block size here. */
+
+.cg-model-slider-shell { container-type: inline-size; }
+
+/* Neutralize native/global range tracks; the shell draws the sole visible track. */
+
+.cg-model-slider::-webkit-slider-runnable-track { appearance: none; height: 28px; border: 0; border-radius: 20px; background: transparent !important; box-shadow: none !important; }
+
+.cg-model-slider::-webkit-slider-thumb { margin-top: -2px; }
+
+.cg-model-slider::-moz-range-track { height: 28px; border: 0; background: transparent !important; box-shadow: none !important; }
+
+.cg-model-slider::-moz-range-progress { background: transparent !important; border: 0; box-shadow: none !important; }
+
+.cg-model-slider { background: transparent !important; box-shadow: none !important; outline: none; }
+
+/* First pass: both visible track ends stop at the thumb center, including minimum (`inset: 0 14px`,
+
+   fill `left: 14px`). The full-width override further down replaces both declarations, so the track
+
+   that actually paints runs edge to edge. */
+
+.cg-model-slider-shell { background: transparent !important; box-shadow: none; }
+
+.cg-model-slider-shell::before { content: ''; position: absolute; inset: 0 14px; border-radius: 20px; background: #e8e6e8; }
+
+.cg-model-slider-fill { left: 14px; }
+
+body[data-ds-dark-theme] .cg-model-slider-shell::before { background: #494649; }
+
+/* Full-width track and an independent thumb with two-pixel end overlap. */
+
+.cg-model-slider-shell::before { inset: 4px 0; }
+
+.cg-model-slider-fill { left: 0; }
+
+/* The knob, taken from the reference plugin the owner pointed at (lemonorangeapple/dsh-effort-switcher):
+
+   24px over a thinner track so it overhangs ✓ `corner-shape: round` for a true circle ✓ a centred box
+
+   offset (`margin-left`) instead of `translateX(-50%)` — a percentage plus a half-transform lands the edges
+
+   on fractional device pixels at this display's 1.25 ratio — and no border and no shadow at all. */
+
+.cg-model-thumb { position: absolute; top: 2px; margin-left: -12px; box-sizing: border-box; width: 24px; height: 24px; border: 0; border-radius: 50%; corner-shape: round; background: #fff; box-shadow: none; pointer-events: none; z-index: 3; }
+
+/* The knob grows only while the pointer is over it, and never larger than this.
+
+   It carries `pointer-events: none`, so the "over" state is decided geometrically in the component (the
+
+   knob cannot be hit-tested without swallowing the press that the native range needs to start a drag).
+
+   There used to be a second, larger step while the track was `:active` — that is the step the owner saw as
+
+   the knob growing and being cut off when they dragged it to either end, so it is gone: dragging keeps the
+
+   same 1.08 as hovering, and the ends look like a click-selected tier. */
+
+.cg-model-thumb { transform-origin: 50% 50%; }
+
+.cg-model-thumb[data-over="true"] { transform: scale(1.08); }
+
+/* While the pointer is pressed the knob goes back to its resting size. Hovering and dragging are the same
+
+   pointer-on-knob situation, so without this the drag inherits the hover growth: at either end of the travel
+
+   (centre 12px from the edge) a 1.08 knob overhangs the track by about a pixel, and that is the "it grows
+
+   and sticks to the edge when I drag it" the owner photographed. Dragging now looks exactly like a tier
+
+   that was selected by a click. */
+
+.cg-model-slider-shell:active .cg-model-thumb { transform: none; }
+
+.cg-model-slider::-webkit-slider-thumb { background: transparent; border-color: transparent; box-shadow: none; }
+
+.cg-model-slider::-moz-range-thumb { background: transparent; border-color: transparent; box-shadow: none; }
+
+/* Reference: pill track and a clean maximum-effort gradient. */
+
+.cg-model-slider-shell { border-radius: 14px; }
+
+.cg-model-slider-shell::before, .cg-model-slider-fill { border-radius: 10px; }
+
+.cg-model-slider-shell[data-max="true"] .cg-model-slider-dots { visibility: hidden; }
+
+/* The reference knob is a plain white circle: no outline, just a soft shadow. The plugin already drew a
+
+   circle, but with a 1px grey border that read as a framed square at this size. */
+
+.cg-model-thumb { border: 0; border-radius: 50%; box-shadow: 0 1px 3px #00000026; }
+
+.cg-model-popover[data-ultra="true"] .cg-model-slider-fill { background: linear-gradient(95deg, #5055f5 0%, #bb74ff 58%, #793af5 100%); }
+
+/* Depth ramp. The fill deepens with the tier instead of only changing at Ultra: six stops
+
+   are shared by every model, so three-tier and five-tier effort lists both move
+
+   monotonically, and the top tier — Max — runs into purple. The shower is no longer an Ultra
+
+   privilege: it runs at every tier, clipped to the fill (see the meteor section further down).
+
+   Low starts on a clean light blue: mixing the grey Off stop into it reads as dirty, and
+
+   nothing here lowers opacity — every stop is an opaque colour.
+
+   Declared on the popover, not on `.cg-model-slider-shell` where these are consumed. A custom
+
+   property is inherited downwards only: the popover is the shell's *ancestor*, so a stop declared
+
+   on the shell was invisible to `--cg-glow: var(--cg-e2)` on the popover, and that made the whole
+
+   non-superfast glow invalid. The shell inherits these values unchanged. */
+
+.cg-model-popover {
+
+  --cg-e1: #b3cdff; /* Low: a real blue — a paler tone sat at the track's own lightness
+
+                       and read as grey-blue mud */
+
+  --cg-e2: #86acff;
+
+  --cg-e3: #6488f5; /* Medium */
+
+  --cg-e4: #4a63d8; /* High */
+
+  --cg-e5: #8a4ff0; /* Max -> purple */
+
+}
+
+body[data-ds-dark-theme] .cg-model-popover {
+
+  --cg-e1: #7fa3f5;
+
+  --cg-e2: #6b91ee;
+
+  --cg-e3: #5b80ea;
+
+  --cg-e4: #4f6ae0;
+
+  --cg-e5: #9a5cf5;
+
+}
+
+/* An unknown level id falls back to its bucketed position ... */
+
+.cg-model-slider-shell[data-depth="0"] .cg-model-slider-fill { background: transparent; }
+
+.cg-model-slider-shell[data-depth="1"] .cg-model-slider-fill { background: var(--cg-e1); }
+
+.cg-model-slider-shell[data-depth="2"] .cg-model-slider-fill { background: var(--cg-e2); }
+
+.cg-model-slider-shell[data-depth="3"] .cg-model-slider-fill { background: var(--cg-e3); }
+
+.cg-model-slider-shell[data-depth="4"] .cg-model-slider-fill { background: var(--cg-e4); }
+
+/* ... while an id the ramp knows wins, because it is the tier the model itself names.
+
+   Off fills nothing: a grey stub against a grey track only looked like a stray artefact. */
+
+.cg-model-slider-shell[data-effort="off"] .cg-model-slider-fill { background: transparent; }
+
+.cg-model-slider-shell[data-effort="none"] .cg-model-slider-fill { background: transparent; }
+
+.cg-model-slider-shell[data-effort="minimal"] .cg-model-slider-fill { background: linear-gradient(90deg, var(--cg-e1), var(--cg-e2)); }
+
+.cg-model-slider-shell[data-effort="low"] .cg-model-slider-fill { background: linear-gradient(90deg, var(--cg-e1), var(--cg-e2)); }
+
+.cg-model-slider-shell[data-effort="medium"] .cg-model-slider-fill { background: linear-gradient(90deg, var(--cg-e2), var(--cg-e3)); }
+
+.cg-model-slider-shell[data-effort="high"] .cg-model-slider-fill { background: linear-gradient(90deg, var(--cg-e3), var(--cg-e4)); }
+
+.cg-model-slider-shell[data-effort="xhigh"] .cg-model-slider-fill,
+
+.cg-model-slider-shell[data-effort="max"] .cg-model-slider-fill { background: linear-gradient(90deg, var(--cg-e4), var(--cg-e5)); }
+
+/* Ultra must be declared here, after the depth buckets: the top position is depth 4, so a
+
+   bucket rule placed later silently outranks the gradient and leaves the whole bar blue —
+
+   which is exactly how the purple went missing.
+
+   Shape: a short blue lead-in and a bright purple right end stay put, while a soft deep
+
+   purple shade drifts slowly across the purple middle.
+
+   The shade is its own element rather than a sized background layer: a layer narrower than
+
+   the bar ends mid-falloff, and that cut-off painted a visible seam down each side. As an
+
+   element whose radial radii are exactly half its box, the falloff reaches zero before any
+
+   edge, and only the transform moves. */
+
+.cg-model-slider-shell[data-effort="ultra"] .cg-model-slider-fill {
+
+  background: linear-gradient(90deg, #3f57c4 0%, #6f5ff2 12%, #8a4ff0 42%, #a855f7 74%, #bb74ff 100%);
+
+}
+
+.cg-model-slider-shell[data-effort="ultra"] .cg-model-slider-fill::after {
+
+  content: '';
+
+  position: absolute;
+
+  top: -70%; bottom: -70%; left: 0; width: 62%;
+
+  z-index: 0;
+
+  pointer-events: none;
+
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, #4c1d95e6 0%, #4c1d9545 45%, #4c1d9500 100%);
+
+  animation: cg-model-ultra-drift 12s ease-in-out infinite alternate;
+
+}
+
+/* Max reads purple at the rim. The rim keys on the tier, not on the top position: when a
+
+   virtual Ultra step was still appended, Max was the last real tier and was deliberately not
+
+   the maximum position. The shower no longer tells the two apart — it runs at every tier. */
+
+.cg-model-slider-shell[data-effort="xhigh"]:not([data-ultra="true"])::before,
+
+.cg-model-slider-shell[data-effort="max"]:not([data-ultra="true"])::before { box-shadow: inset 0 0 0 1px #8a4ff04d; }
+
+/* Deliberately ungated and deliberately not theme-varied: this dot marks a position the fill has
+
+   not reached on a plain rail, so it is the same neutral in both themes — giving it a dark-mode
+
+   value would make it read as a marker that carries meaning. Both properties are stated so the
+
+   purple ultra glow from the `[data-ultra="true"]` rule cannot leak in while the shell's ultra
+
+   state is off. */
+
+.cg-model-slider-shell:not([data-ultra="true"]) .cg-model-slider-dots span[data-ultra="true"] { background: #b7b4b7; box-shadow: none; }
+
+/* The shower used to be the Ultra tier's tell: the shell hid it whenever `[data-ultra="true"]` was
+   absent. The panel no longer has an Ultra tier at all (the top position is the model's own highest
+   real level), and the owner asked for the flow at every tier — so the layer is always on where the
+   track has a fill, and the tier keeps expressing itself through the fill colour, exactly as before. */
+.cg-model-meteors { display: block; }
+
+/* Nothing to animate when the position is unknown: the track draws no fill and lights no dot there,
+   so a moving highlight would be the only thing claiming a tier the panel does not know. That stop is
+   not stated here: 超快 re-asserts `display: block` on this layer further down with a deeper selector,
+   so it is folded into the hard off/none/unknown rule next to the sheen, where it can win. */
+
+/* The dots carry the fill, not a fixed grey: a dot the fill has reached turns white with a
+
+   dark hairline so it stays legible on the pale Low blue as well as on the deep tiers, and
+
+   a dot still ahead stays the track marker. */
+
+.cg-model-slider-dots span[data-on="true"] { background: #fff; box-shadow: 0 0 0 1px #0000002e; }
+
+body[data-ds-dark-theme] .cg-model-slider-dots span { background: #8b8992; }
+
+body[data-ds-dark-theme] .cg-model-slider-dots span[data-on="true"] { background: #fff; box-shadow: 0 0 0 1px #00000052; }
+
+/* The knob travels by `translate`, so that is what animates. This used to name `left`, which the component
+
+   no longer writes — the transition therefore matched nothing and the knob jumped between tiers instead of
+
+   sliding. */
+
+.cg-model-thumb { transition: translate 100ms ease-out, transform 150ms cubic-bezier(.22,.8,.28,1); }
+
+/* The transient Ultra cost notice is longer than any tier name, so it gets its own fit
+
+   instead of stretching the summary pill. */
+
+.cg-model-summary strong[data-notice="true"], .cg-model-trigger-effort[data-notice="true"] { font-size: 11px; letter-spacing: .2px; white-space: nowrap; }
+
+.cg-model-slider-fill { transition: width 100ms ease-out; }
+
+.cg-model-popover { animation: cg-model-enter 120ms ease-out; transform-origin: bottom right; }
+
+/* Model catalog follows the reference's compact menu spacing. */
+
+.cg-model-popover[data-pane="model"] { padding: 4px; border-radius: 16px; box-shadow: 0 6px 14px #0000000c; }
+
+.cg-model-catalog-title { margin: 4px 8px 8px; color: var(--cg-muted); font-size: 12px; line-height: 20px; }
+
+.cg-model-catalog-default { padding: 0 8px; color: var(--cg-text); font-size: 12px; line-height: 18px; }
+
+.cg-model-popover[data-pane="model"] .cg-model-catalog { max-height: min(440px, 72vh); gap: 0; padding: 0; }
+
+.cg-model-popover[data-pane="model"] .cg-model-provider { padding: 0 8px 3px; font-size: 12px; line-height: 18px; }
+
+.cg-model-popover[data-pane="model"] .cg-model-option { box-sizing: border-box; min-height: 29px; padding: 4px 8px; line-height: 21px; border-radius: 10px; }
+
+.cg-model-popover[data-pane="model"] .cg-model-option[aria-checked="true"] { background: #f1f1f1; color: var(--cg-text); }
+
+.cg-model-popover[data-pane="model"] .cg-model-option:hover { background: var(--cg-hover); }
+
+.cg-model-trigger { padding: 0 9px; border-radius: 999px; }
+
+.cg-model-trigger[aria-expanded="true"] { background: #f1f1f1; }
+
+body[data-ds-dark-theme] .cg-model-option[aria-checked="true"],
+
+body[data-ds-dark-theme] .cg-model-trigger[aria-expanded="true"] { background: #404043; }
+
+/* Lightning orchestrator switch: a real button. Armed, the glyph paints itself with the
+
+   shared deep purple gradient and carries its sparkles, so no colour override is needed. */
+
+.cg-model-zap {
+
+  box-sizing: border-box; display: grid; place-items: center; width: 26px; height: 26px;
+
+  padding: 3px; border: 0; border-radius: 8px; background: transparent;
+
+  color: #b9b8bb; cursor: pointer; transition: color 140ms ease, background 140ms ease;
+
+}
+
+.cg-model-zap:hover:not(:disabled) { background: #f1f1f3; color: #6f6f73; }
+
+.cg-model-zap:focus-visible { outline: 2px solid #3982fa; outline-offset: 1px; }
+
+.cg-model-zap:disabled { cursor: default; opacity: .45; }
+
+.cg-model-zap-glyph { flex: none; transition: filter 160ms ease; }
+
+.cg-model-zap[data-on="true"] { color: #8a4ff0; }
+
+.cg-model-zap[data-on="true"] .cg-model-zap-glyph { filter: drop-shadow(0 0 5px #8a4ff08c); }
+
+.cg-model-zap[data-on="true"]:hover { background: #f3ebff; }
+
+/* Tree keeps the old superfast gold, but keyed on the button's own `data-mode`. The original plugin
+   gated the gold on `[data-superfast="true"]` on the root; the panel no longer writes that flag on
+   purpose (the rail's colours stay put), so the root-keyed rules never fire. Keying on the button
+   makes the colour describe the button's own state instead of a panel-wide mode. */
+
+.cg-model-zap[data-on="true"][data-mode="tree"] { color: #e8a317; }
+
+.cg-model-zap[data-on="true"][data-mode="tree"] .cg-model-zap-glyph { filter: drop-shadow(0 0 5px #f7c9488c); }
+
+.cg-model-zap[data-on="true"][data-mode="tree"]:hover { background: #fdf3dc; }
+
+body[data-ds-dark-theme] .cg-model-zap[data-on="true"][data-mode="tree"] { color: #f0b429; }
+
+body[data-ds-dark-theme] .cg-model-zap[data-on="true"][data-mode="tree"]:hover { background: #3a2f14; }
+
+/* The sparkles breathe out of phase; they are stars around the bolt, not a streak. */
+
+.cg-bolt-star { transform-box: fill-box; transform-origin: center; animation: cg-bolt-twinkle 2.2s ease-in-out infinite; }
+
+body[data-ds-dark-theme] .cg-model-zap:hover:not(:disabled) { background: #404043; color: #d6d6d8; }
+
+body[data-ds-dark-theme] .cg-model-zap[data-on="true"] { color: #bb8dff; }
+
+body[data-ds-dark-theme] .cg-model-zap[data-on="true"]:hover { background: #362a4d; }
+
+body[data-ds-dark-theme] .cg-model-zap[data-on="true"]:hover { background: #2c3852; }
+
+/* No gear reading means no mode: the button carries `data-mode="unknown"` and `data-on="false"`.
+   It has to read as present but not armed, so it stays dim and neutral in both themes. The hover
+   restates the plain grey tint on purpose — nothing here may borrow the armed purple. These rules
+   sit after every armed-state rule so a stale `data-on` cannot win the tie and tint it. */
+
+.cg-model-zap[data-mode="unknown"] { opacity: .55; color: #b9b8bb; }
+
+.cg-model-zap[data-mode="unknown"]:hover:not(:disabled) { background: #f1f1f3; color: #6f6f73; }
+
+body[data-ds-dark-theme] .cg-model-zap[data-mode="unknown"] { color: #b9b8bb; }
+
+body[data-ds-dark-theme] .cg-model-zap[data-mode="unknown"]:hover:not(:disabled) { background: #404043; color: #d6d6d8; }
+
+/* Armed-state marker in the collapsed trigger, so the mode is visible with the
+
+   popover closed. */
+
+.cg-model-trigger-bolt { display: inline-flex; align-items: center; flex: none; color: #6f5bc4; }
+
+.cg-model-trigger-bolt svg { width: 14px; height: 14px; color: currentColor; }
+
+body[data-ds-dark-theme] .cg-model-trigger-bolt { color: #bb8dff; }
+
+/* The meteor shower. Each meteor is a gradient streak with a bright leading point; the eleven of
+
+   them run on negative delays, so the field is full from the first painted frame instead of filling
+
+   in over two seconds. It used to be Ultra-only; it now runs at every tier, but only inside the part
+
+   of the rail the fill has reached — the layer is a band `--cg-fill-width` wide, so the streaks stop
+
+   at the knob instead of crossing the whole track. `--cg-meteor-travel` is the pixel distance they
+
+   translate across; the component writes it, and this value is only the fallback for the frames
+
+   before that measurement lands. It is a pixel distance on purpose: `translateX` resolves a
+
+   percentage against the meteor's own width (14-42px), so `calc(100% + 36px)` here let every streak
+
+   die less than a third of the way along the rail. A sheen sweeps the same band at every tier, and
+
+   the whole shower collapses to a static sheen under reduced motion. */
+
+/* No `overflow: hidden` on the shell any more. It used to clip the meteors, but it also clipped the knob:
+
+   while dragging, the knob grows to 1.08× and at either end of the travel it stuck out past the shell and
+
+   was sliced — which is what the owner sees as "pulling it to the end does not line up". The clip now lives
+
+   on the meteor layer alone (`.cg-model-meteors`), which is what the reference plugin does: its groove
+
+   clips, its knob is a sibling and may overhang. */
+
+.cg-model-slider-shell { --cg-meteor-travel: 420px; }
+
+/* One extra px of room each side, not four: the halo below is painted inside this box, so whatever
+
+   the box refuses to show is what gets clipped. At `inset: 4px` the visible height was 20px against
+
+   streaks sitting at y=3…18, which left no streak enough clearance for a 7px halo — it was painted
+
+   and then cut off. This buys 26px without letting the streaks touch the shell edge. */
+
+/* The band. `--cg-fill-width` is the fill's own inline width — `calc(24px + (100% - 24px) * ratio)`,
+
+   or `0px` when the position is unknown — so the layer starts at the track's left edge and ends at
+
+   the knob's right edge. The cut is therefore under the 24px thumb and never reads as a wall: the
+
+   knob is the only thing that has to cover it. `left`/`right` are stated individually rather than as
+
+   an `inset` shorthand because the band is one-sided; `top`/`bottom` stay at 1px for the halo
+
+   clearance measured above. Off / none / unknown paint no fill, and hide this layer outright next
+
+   to the sheen. The `var()` fallback is `0px` on purpose: a shell that has not been measured yet
+
+   shows an empty band, never a full-track shower. `container-type` also lives here rather than on
+
+   the shell: this element's inline size *is* the band width, so the density queries below track the
+
+   fill, not the track. */
+
+.cg-model-meteors { position: absolute; left: 0; right: auto; top: 1px; bottom: 1px; width: var(--cg-fill-width, 0px); overflow: hidden; z-index: 1; border-radius: inherit; pointer-events: none; container-type: inline-size; container-name: cg-meteor-band; }
+
+/* A screen blend used to sit on this container, and it is gone on purpose. It bought +20% to +35%
+
+   relative luminance across the tail — genuinely the cheapest brightness per *painted* pixel — but it
+
+   was not cheap per *frame*: a blended element cannot be composited on its own, it has to be recomposited
+
+   against its backdrop every time either side changes, and this layer's own content changes on every
+
+   frame because eleven streaks translate across it. The cost therefore scaled with frames, not with
+
+   paint: the layer fell off the GPU fast path and every streak's transform dragged a full re-blend of
+
+   the 26px band behind it. The brightness is bought back in the places that cost nothing per frame —
+
+   the tail's own gradient alphas below and the halo's alpha in `.cg-model-meteor` — because a static
+
+   gradient is rasterised once and then only translated. Dark theme lost the most, so the compensation
+
+   lives on the dark branch and the light branch keeps its own saturated values. */
+
+.cg-model-meteor {
+
+  position: absolute; top: var(--cg-meteor-y); left: 0; display: block;
+
+  width: var(--cg-meteor-len); height: var(--cg-meteor-thick);
+
+  transform-origin: left center;
+
+  /* This box paints nothing, and it carries no clip. The streak and the taper live one box down, on
+
+     `::before`, for one measured reason: `clip-path` clips the element *and its pseudo-elements* and
+
+     the filter result with them (Masking 1 §2 — filter, then clip, then mask, then opacity). With the
+
+     clip on this box the drop-shadows were painted from the pill and then thrown away: sampled in
+
+     Chrome, every halo pixel outside the box measured 0, and only 1.5% of the shadow pixels survived,
+
+     all of them inside the box. That is the "怎么不发光了": the streak lost its light, not its motion.
+
+     The tail keeps its own colour ramp — only the leading point was ever recoloured, because a
+
+     purple head on a warm tail reads as a stray dot rather than the tip of the streak. The head
+
+     below is a soft translucent white instead of an opaque one, so it sits inside the tail's
+
+     brightest stop rather than stamping a hard dot onto it.
+
+     White, and now actually white. The streak's `::before` paints two background layers — a white ramp
+
+     over a tier-coloured one — and the colour layer used to sit at 34/62/74%, which read as a purple
+
+     (Ultra) or gold (超快) bar with white laid on top, not as the white blocks the owner asked for. It
+
+     sits at 10–18% now: a trace of air in the tail, not a tint. Nothing about the glow is lost, because
+
+     the glow never came from that layer — it is the drop-shadow on `.cg-model-meteor` and the head below.
+
+     The reference version the owner remembers is a field of small white light blocks crossing the rail —
+
+     short, bright — and a long ramp of purple-to-gold reads as tape next to it. The mode colour lives in
+
+     the head, which is where it belongs: the streak is light, the tip is the tier. */
+
+  background: none;
+
+  /* One halo, painted from `::before`'s *clipped* silhouette, so it follows the taper and fades with
+
+     the tail instead of ringing a rectangle — the same shape the old bloom band had, which is why the
+
+     band could go. It used to be two stacked drop-shadows (a 3px white one under a 5px mode-coloured
+
+     one); that pair is the expensive half of this element, because the head below pulses inside this
+
+     filter, so the filter re-runs whenever the head does, and eleven streaks then cost twenty-two blur
+
+     rasterisations per frame. One pass at the intermediate radius costs eleven and reads the same at 3px
+
+     thickness. The colour is the old pair collapsed into one: mostly white with the tier colour mixed
+
+     in, at an alpha a little above the 0.685 the two translucent layers stacked to — that is the
+
+     compensation for the screen blend this layer no longer gets, see the note above this block.
+
+     Radius stays small on purpose: the layer is only 26px tall and its overflow clips whatever a bigger
+
+     blur spreads past it, so a wide radius would be painted and then thrown away. */
+
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--cg-glow, #ffffff) 38%, #ffffffa6));
+
+  opacity: 0; animation: cg-model-meteor var(--cg-meteor-dur) linear var(--cg-meteor-delay) infinite; animation-duration: calc(var(--cg-meteor-dur) * 1);
+
+}
+
+/* The leading point: brighter, round, and slightly ahead of the tail. Its full rule — geometry,
+
+   colour and the four-shadow halo — is stated once below, after the streak it sits on. */
+
+
+
+/* ── The streak, and the bloom it now carries inside itself ────────────────────────────────────
+
+   The streak is a white bar: full thickness at the leading (right) end, about two thirds of it at
+
+   the tail. Tapered, not a cylinder — a true point would read as a comet rather than the short bar
+
+   of light this is meant to be, so the tail only thins; reading right-to-left, the streak narrows a
+
+   little the further you get from the tip. Done with clip-path rather than a height change because
+
+   the height comes from a data variable.
+
+   The clip lives here and nowhere else. This box *is* the shape, so clipping it costs nothing else:
+
+   the element above stays unclipped and can still paint the halo, which is the arrangement that was
+
+   missing before. Everything this box draws is inside the trapezoid, so the bloom that used to be a
+
+   band 2px/6px outside the box is now the second background layer, under the bar — it colours the
+
+   thin tail instead of haloing it, and the halo itself is the element's drop-shadow. */
+
+.cg-model-meteor::before {
+
+  content: ''; position: absolute; inset: 0; border-radius: 999px;
+
+  clip-path: polygon(0% 17%, 100% 0%, 100% 100%, 0% 83%);
+
+  /* Two layers, and the second one is a trace rather than a tint. The owner's picture is a field of
+
+     white light blocks, so the streak's body has to read as white; the tier colour belongs to the head
+
+     below and to the drop-shadow on `.cg-model-meteor`, which is where the glow actually comes from.
+
+     The colour layer stays at 10–18% for the faint air it gives the tail and nothing more. At the
+
+     34/62/74% it used to carry, the streak read as a purple (Ultra) or gold (超快) bar with white laid
+
+     over it — never the white the request asked for. Dark branch only: the light branch restates this
+
+     whole list below with its own values. */
+
+  background-image:
+
+    linear-gradient(90deg, #ffffff00, #ffffff8f 20%, #fffffff0 70%, #ffffff),
+
+    linear-gradient(90deg,
+
+      #ffffff00 0%,
+
+      color-mix(in srgb, var(--cg-glow, #c9b4f0) 10%, transparent) 38%,
+
+      color-mix(in srgb, var(--cg-glow, #c9b4f0) 14%, transparent) 78%,
+
+      color-mix(in srgb, var(--cg-glow, #c9b4f0) 18%, transparent) 100%);
+
+}
+
+/* Head: a flare plus a slow breath. The point stays 2px on purpose — at that size a 2px offset inside a
+
+   3px blur overlaps into one soft cross, which is the look a star wants; a conic gradient would need a
+
+   bigger box, and enlarging the box is what turns a tip into a shape.
+
+   Four layers, not six. The two that went are the vertical arms at 38% — the weakest pair, and the shaft
+
+   they would add is the direction the streak already travels in, so on a 2px dot they were doing the least
+
+   work of anything here while still costing two more blurred shadows per head. The 58% ring came up to 62%
+
+   to hold the head's overall light after the layer blend was removed. Everything rides --cg-glow, so 超快
+
+   keeps its gold head and the Ultra tiers their purple with no second rule. */
+
+/* The head, in full and in one place. It used to be split across two blocks — geometry and a
+
+   single-shadow halo up in the streak section, then four shadows down here — and the second block's
+
+   box-shadow silently replaced the first one's, leaving a dead declaration behind. Merged.
+
+   The head wears the mode's own colour: --cg-glow is the tier glow this panel already breathes in,
+
+   #f7c948 gold under superfast and #bb74ff purple at the top non-superfast stop. Mixed toward white so
+
+   it stays a soft tip instead of a saturated dot; the plain declaration in front is the fallback for a
+
+   browser without color-mix, matching how the popover halo degrades. Every var() carries #ffffffb3 as
+
+   its fallback because this rule also runs where --cg-glow has no tier (off / none) and must stay white
+
+   rather than losing the declaration. */
+
+.cg-model-meteor::after {
+
+  content: ''; position: absolute; right: -1px; top: 50%; width: 2px; height: 2px;
+
+  margin-top: -1px; border-radius: 50%;
+
+  background: var(--cg-glow, #ffffffb3);
+
+  background: color-mix(in srgb, var(--cg-glow, #ffffffb3) 45%, #ffffff);
+
+  box-shadow:
+
+    0 0 5px 0         color-mix(in srgb, var(--cg-glow, #ffffffb3) 62%, transparent),
+
+    0 0 2px 0         color-mix(in srgb, var(--cg-glow, #ffffffb3) 46%, #ffffff),
+
+    2px 0 2px -.5px   color-mix(in srgb, var(--cg-glow, #ffffffb3) 46%, transparent),
+
+    -2px 0 2px -.5px  color-mix(in srgb, var(--cg-glow, #ffffffb3) 46%, transparent);
+
+  animation: cg-model-meteor-head 1.15s ease-in-out infinite;
+
+}
+
+/* Light theme: the rail is near-white (#e8e6e8), where added white is nothing, so the flare and the
+
+   bloom lean on the mode colour instead. Both background layers are restated: a background-image
+
+   override replaces the whole list, and dropping the first one would make the streak itself vanish in
+
+   the light theme. The colour layer carries the same low alpha as the dark branch — the streak has to
+
+   read as white in both themes, and on this rail that means the white ramp does the work. */
+
+body:not([data-ds-dark-theme]) .cg-model-meteor::before {
+
+  background-image:
+
+    linear-gradient(90deg, #ffffff00, #ffffff80 20%, #ffffffe6 70%, #ffffff),
+
+    linear-gradient(90deg,
+
+      #ffffff00 0%,
+
+      color-mix(in srgb, var(--cg-glow, #8f74d6) 8%, transparent) 38%,
+
+      color-mix(in srgb, var(--cg-glow, #8f74d6) 12%, transparent) 78%,
+
+      color-mix(in srgb, var(--cg-glow, #8f74d6) 16%, transparent) 100%);
+
+}
+
+/* The shared halo leans white so it survives on the dark rail; on the light rail a near-white blur is
+
+   nothing, so light keeps the mode colour the way its flare does. Same single pass, same radius. */
+
+body:not([data-ds-dark-theme]) .cg-model-meteor {
+
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--cg-glow, #8f74d6) 58%, transparent));
+
+}
+
+body:not([data-ds-dark-theme]) .cg-model-meteor::after {
+
+  box-shadow:
+
+    0 0 7px 1px       color-mix(in srgb, var(--cg-glow, #8f74d6) 74%, transparent),
+
+    0 0 2px 0         var(--cg-glow, #8f74d6),
+
+    2px 0 3px -.5px   color-mix(in srgb, var(--cg-glow, #8f74d6) 54%, transparent),
+
+    -2px 0 3px -.5px  color-mix(in srgb, var(--cg-glow, #8f74d6) 54%, transparent);
+
+}
+
+/* Eleven streaks, every gap under ~0.4s and none of the periods a multiple of another, so
+
+   the field never falls into a visible rhythm; the short ones read as fast dust and the long ones as
+
+   the occasional real meteor. Lengths run 15/16/18/20/23/24/26/28/30/32/34px — a 2.27× spread end to end,
+
+   scattered across the lanes rather than sorted, so adjacent streaks never pair up at the same size.
+
+   What a streak is graded against is not L/T but the straight edge it keeps: `border-radius: 999px` eats
+
+   T/2 at each end, so the flat run is L − T, and the ratio that decides "bar or dot" is (L − T) / T ≥ 4 —
+
+   equivalently L ≥ 5T. L/T = 4 is not enough: 12/3 clears it and still leaves 9/3 = 3.00 of straight edge,
+
+   which is the "豆" the owner reported. Measured at DPR 1.25 against a rasterised box, the straight edge
+
+   covers 0.77–0.87 of the length at L/T = 4 but only 0.57–0.63 at 2, so the gap is real.
+
+   All eleven now satisfy L ≥ 5T (15/3 leaves 4.00 straight, 34/4 leaves 7.50), and the short ones carry
+
+   the thinner body so the field still reads as one system rather than eleven unrelated sizes.
+
+   Thickness is integer only: measured, 3.5px rasterises as 3px plus one 38%-coverage edge row, while
+
+   4px fills that row to 79% — a 2.5/3.5 split would be invisible. Two body sizes, length does the grading.
+
+   34px is the ceiling: past that a streak stops reading as a short bar of light and turns back into the
+
+   long coloured tape that was already rejected once.
+
+   Duration, delay and lane are untouched — that rhythm was accepted. */
+
+.cg-model-meteor:nth-child(1) { --cg-meteor-y: 3px; --cg-meteor-delay: -0.1s; --cg-meteor-dur: 1.5s; --cg-meteor-len: 32px; --cg-meteor-thick: 4px; }
+
+.cg-model-meteor:nth-child(2) { --cg-meteor-y: 8px; --cg-meteor-delay: -0.5s; --cg-meteor-dur: 1.9s; --cg-meteor-len: 26px; --cg-meteor-thick: 4px; }
+
+.cg-model-meteor:nth-child(3) { --cg-meteor-y: 13px; --cg-meteor-delay: -0.88s; --cg-meteor-dur: 2.1s; --cg-meteor-len: 20px; --cg-meteor-thick: 3px; }
+
+.cg-model-meteor:nth-child(4) { --cg-meteor-y: 18px; --cg-meteor-delay: -1.26s; --cg-meteor-dur: 1.7s; --cg-meteor-len: 34px; --cg-meteor-thick: 4px; }
+
+.cg-model-meteor:nth-child(5) { --cg-meteor-y: 17px; --cg-meteor-delay: -1.62s; --cg-meteor-dur: 2.3s; --cg-meteor-len: 23px; --cg-meteor-thick: 4px; }
+
+.cg-model-meteor:nth-child(6) { --cg-meteor-y: 6px; --cg-meteor-delay: -1.98s; --cg-meteor-dur: 2.6s; --cg-meteor-len: 16px; --cg-meteor-thick: 3px; }
+
+.cg-model-meteor:nth-child(7) { --cg-meteor-y: 11px; --cg-meteor-delay: -0.3s; --cg-meteor-dur: 1.6s; --cg-meteor-len: 28px; --cg-meteor-thick: 4px; }
+
+.cg-model-meteor:nth-child(8) { --cg-meteor-y: 15px; --cg-meteor-delay: -1.14s; --cg-meteor-dur: 2s; --cg-meteor-len: 24px; --cg-meteor-thick: 4px; }
+
+.cg-model-meteor:nth-child(9) { --cg-meteor-y: 15px; --cg-meteor-delay: -0.68s; --cg-meteor-dur: 1.8s; --cg-meteor-len: 18px; --cg-meteor-thick: 3px; }
+
+.cg-model-meteor:nth-child(10) { --cg-meteor-y: 5px; --cg-meteor-delay: -1.44s; --cg-meteor-dur: 2.2s; --cg-meteor-len: 30px; --cg-meteor-thick: 4px; }
+
+.cg-model-meteor:nth-child(11) { --cg-meteor-y: 9px; --cg-meteor-delay: -0.22s; --cg-meteor-dur: 2.45s; --cg-meteor-len: 15px; --cg-meteor-thick: 3px; }
+
+/* Density follows the band, not the track. Eleven streaks were tuned for the full 230px groove — one
+   every ~21px. The band is shorter at every lower tier (a three-tier model gives 24 / 127 / 230px),
+   so eleven of them inside a 127px band is a smear. The layer itself is the query container: its
+   inline size is `--cg-fill-width`, so these breakpoints measure the fill. A query on the shell
+   would only see the track's width, which does not change with the tier, so it could not express
+   this. Counts hold the same ~20-25px spacing across the breakpoints: 1 / 4 / 6 / 8 / 11. The
+   streaks that stay are the head of the list, in their existing order and colours; only `display`
+   changes, and a browser without container queries keeps all eleven inside the band instead of
+   losing any. */
+@container cg-meteor-band (max-width: 184px) {
+  .cg-model-meteor:nth-child(9), .cg-model-meteor:nth-child(10), .cg-model-meteor:nth-child(11) { display: none; }
+}
+@container cg-meteor-band (max-width: 136px) {
+  .cg-model-meteor:nth-child(7), .cg-model-meteor:nth-child(8) { display: none; }
+}
+@container cg-meteor-band (max-width: 96px) {
+  .cg-model-meteor:nth-child(5), .cg-model-meteor:nth-child(6) { display: none; }
+}
+@container cg-meteor-band (max-width: 48px) {
+  .cg-model-meteor:nth-child(2), .cg-model-meteor:nth-child(3), .cg-model-meteor:nth-child(4) { display: none; }
+}
+
+/* A wide glare sweeps the track once every few seconds, so the field reads as moving
+
+   even between meteors. Carried by ::after, which the star field does not need.
+
+   Its screen blend is gone too, for the same reason as the meteor layer's: the sweep is the
+
+   one thing in this panel that repaints its whole width on every frame, and blending made that repaint
+
+   recomposite against the rail as well. The gradient's two light stops carry the ~12% more alpha the
+
+   blend was contributing. What is left is a plain repaint of a static gradient, which is the cheapest
+
+   form this sweep has short of rebuilding it as a translated layer. */
+
+.cg-model-slider-shell[data-ultra="true"]::after {
+
+  content: ''; position: absolute; inset: 0; z-index: 1; border-radius: inherit; pointer-events: none;
+
+  background: linear-gradient(105deg, #ffffff00 44%, #c9b4f08f 50%, #d9c8ff9e 56%, #ffffff00 62%);
+
+  background-size: 220% 100%;
+
+  animation: cg-model-glare 3.4s ease-in-out infinite; opacity: 0;
+
+}
+
+/* The same sweep for every tier. The `[data-ultra="true"]` rules above are left where they are —
+   they simply never match now that the panel has no Ultra tier — and this is that selector with the
+   gate dropped: the shell itself carries the sweep. It is clipped to the fill's width and, unlike
+   the old full-shell version, to the fill's own 4px..24px band, so the glare never paints the bare
+   rail above or below the bar. The tint comes from the tier instead of the fixed lavender:
+   `--cg-glow` is the per-tier colour the halo and the meteor heads already wear (gold under 超快, by
+   its own rules), with `--cg-effort-color` as the fallback for a shell outside the popover. The two
+   light stops stay in the old sweep's alpha range; the fill's per-tier backgrounds are untouched. */
+.cg-model-slider-shell::after {
+
+  content: ''; position: absolute; left: 0; right: auto; top: 4px; bottom: 4px;
+
+  width: var(--cg-fill-width, 0px); z-index: 1; border-radius: 10px; pointer-events: none;
+
+  /* Longhand, because the sweep is a 220%-wide layer moved by `background-position`: the `background`
+     shorthand would reset the size and the glare could only pulse in place. */
+  background-image: linear-gradient(105deg, #ffffff00 44%,
+    color-mix(in srgb, var(--cg-glow, var(--cg-effort-color, #c9b4f0)) 45%, transparent) 50%,
+    #ffffffa6 56%,
+    #ffffff00 62%);
+
+  background-size: 220% 100%;
+
+  background-repeat: no-repeat;
+
+  animation: cg-model-glare 3.4s ease-in-out infinite; opacity: 0;
+
+}
+
+/* Light theme: the same sweep with its alphas roughly halved. A near-white glare on a pale fill is
+   the one place this effect gets loud; the tier tint stays, because the colour is what ties the
+   sweep to the bar. Only the image is restated — size, repeat and the animation come from above. */
+body:not([data-ds-dark-theme]) .cg-model-slider-shell::after {
+
+  background-image: linear-gradient(105deg, #ffffff00 44%,
+    color-mix(in srgb, var(--cg-glow, var(--cg-effort-color, #c9b4f0)) 22%, transparent) 50%,
+    #ffffff59 56%,
+    #ffffff00 62%);
+
+}
+
+/* Off, none and unknown are hard stops, not modes: Off paints no fill at all, and an unknown position
+   has no width to put a band in. Both the shower and the sheen go, and the layer's `display` is
+   `!important` because 超快 re-asserts `display: block` on it further down with a deeper selector — a
+   hard state has to win over a mode. This also folds in the `[data-unknown="true"]` stop that used to
+   sit with the base `.cg-model-meteors` rule. */
+.cg-model-slider-shell[data-effort="off"] .cg-model-meteors,
+.cg-model-slider-shell[data-effort="none"] .cg-model-meteors,
+.cg-model-slider-shell[data-unknown="true"] .cg-model-meteors,
+.cg-model-slider-shell[data-effort="off"]::after,
+.cg-model-slider-shell[data-effort="none"]::after,
+.cg-model-slider-shell[data-unknown="true"]::after { display: none !important; }
+
+/* Star field rides the meteor layer's own pseudo-element-free element list, so the
+
+   twinkle is drawn by a dedicated overlay instead of competing with the glare. */
+
+.cg-model-meteors::before {
+
+  content: ''; position: absolute; inset: 3px 8px; border-radius: inherit;
+
+  background-image:
+
+    radial-gradient(1.5px 1.5px at 8% 30%, #cbb4ff88, transparent),
+
+    radial-gradient(1.2px 1.2px at 20% 68%, #f2ebffcc, transparent),
+
+    radial-gradient(1.2px 1.2px at 28% 72%, #e5d9ffcc, transparent),
+
+    radial-gradient(1.8px 1.8px at 39% 22%, #cbb4ff77, transparent),
+
+    radial-gradient(1.2px 1.2px at 47% 26%, #cbb4ff77, transparent),
+
+    radial-gradient(1.1px 1.1px at 55% 74%, #cbb4ffcc, transparent),
+
+    radial-gradient(1.2px 1.2px at 66% 66%, #d9c8ffee, transparent),
+
+    radial-gradient(1.4px 1.4px at 74% 34%, #cbb4ff88, transparent),
+
+    radial-gradient(1.5px 1.5px at 84% 38%, #cbb4ff88, transparent),
+
+    radial-gradient(1.1px 1.1px at 93% 74%, #cbb4ffcc, transparent);
+
+  animation: cg-model-twinkle 2.6s ease-in-out infinite alternate;
+
+}
+
+.cg-model-slider-shell[data-ultra="true"] .cg-model-thumb {
+
+  border-color: #d3b6ff;
+
+  box-shadow: 0 0 6px #a066ff99, 0 0 16px #8b5cf68c, 0 0 0 1px #ffffff99 inset;
+
+}
+
+.cg-model-slider-shell[data-ultra="true"][data-max="true"] .cg-model-thumb {
+
+  animation: none;
+
+}
+
+.cg-model-popover[data-ultra="true"] .cg-model-slider-shell::before { box-shadow: inset 0 0 0 1px #bb74ff3d; }
+
+/* The appended Ultra position is drawn darker: it is a mode, not a real tier. */
+
+.cg-model-slider-dots span[data-ultra="true"] { background: #9b50ff; box-shadow: 0 0 5px #9b50ff99; }
+
+/* ---- Motion: the panels and rows cross over instead of snapping --------------------------------
+
+   The house curve is cubic-bezier(.22,.8,.28,1) at 140-180ms: quick enough to feel like a response
+
+   rather than a wait, and eased so nothing starts or stops abruptly. Everything here is decoration —
+
+   the reduced-motion block at the end switches all of it off. */
+
+.cg-model-pane { color: var(--cg-text); animation: cg-soft-in 170ms cubic-bezier(.22, .8, .28, 1); }
+
+.cg-model-editor { display: flex; flex: 1 1 auto; min-width: 0; align-items: flex-start; gap: 2px; animation: cg-soft-in 140ms cubic-bezier(.22, .8, .28, 1); }
+
+.cg-model-viewer { display: flex; flex: 1 1 auto; min-width: 0; align-items: center; gap: 2px; animation: cg-soft-in 140ms cubic-bezier(.22, .8, .28, 1); }
+
+.cg-button, .cg-model-option, .cg-model-rename, .cg-model-alias-save, .cg-model-alias-cancel,
+
+.cg-model-summary, .cg-model-zap, .cg-model-reset, .cg-model-choice, .cg-rail-item, .cg-task-menu .cg-button {
+
+  transition: background-color 140ms cubic-bezier(.22, .8, .28, 1), color 140ms cubic-bezier(.22, .8, .28, 1),
+
+    opacity 140ms cubic-bezier(.22, .8, .28, 1), border-color 140ms cubic-bezier(.22, .8, .28, 1);
+
+}
+
+.cg-model-sync-warn { color: #c0392b; }
+
+.cg-model-sync-warn { color: #c0392b; }
+
+/* ---------------------------------------------------------------------------------------------
+
+   提供商参考清单（模型面板标题旁那个按钮打开的第二页）。
+
+   用原生 <details>/<summary> 做折叠：展开状态由浏览器维护，不需要插件再加一个 state——面板里的
+
+   每一个 useState 都被测试垫片的槽位表盯着，能不加就不加。
+
+   --------------------------------------------------------------------------------------------- */
+
+html[data-chatgpt-ui] .cg-model-catalog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+html[data-chatgpt-ui] .cg-model-providers-button {
+
+  flex: none; height: 24px; padding: 0 10px; border: 1px solid var(--cg-line, #e8e8e8); border-radius: 999px;
+
+  background: var(--cg-page, #fff); color: var(--cg-muted, #6b6b6b); font-size: 12px; line-height: 22px; cursor: pointer;
+
+}
+
+html[data-chatgpt-ui] .cg-model-providers-button:hover { background: var(--cg-hover, #f2f2f2); color: var(--cg-text, #1a1a1a); }
+
+body[data-ds-dark-theme] .cg-model-providers-button { border-color: #383838; background: #292929; color: #a8a8a8; }
+
+body[data-ds-dark-theme] .cg-model-providers-button:hover { background: #333; color: #ececec; }
+
+html[data-chatgpt-ui] .cg-model-provider-note { margin: 6px 2px 8px; color: var(--cg-muted, #6b6b6b); font-size: 11px; line-height: 15px; }
+
+html[data-chatgpt-ui] .cg-model-providers { max-height: 320px; overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+
+html[data-chatgpt-ui] .cg-model-provider-region { margin: 8px 2px 4px; color: var(--cg-muted, #6b6b6b); font-size: 11px; font-weight: 600; letter-spacing: .4px; }
+
+html[data-chatgpt-ui] .cg-model-provider { border-bottom: 1px solid var(--cg-line, #f0f0f0); }
+
+body[data-ds-dark-theme] .cg-model-provider { border-bottom-color: #2f2f2f; }
+
+html[data-chatgpt-ui] .cg-model-provider-name {
+
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+
+  padding: 7px 6px; color: var(--cg-text, #1a1a1a); font-size: 13px; line-height: 18px; cursor: pointer; list-style: none;
+
+}
+
+html[data-chatgpt-ui] .cg-model-provider-name::-webkit-details-marker { display: none; }
+
+html[data-chatgpt-ui] .cg-model-provider-name:hover { background: var(--cg-hover, #f5f5f5); }
+
+body[data-ds-dark-theme] .cg-model-provider-name:hover { background: #2f2f2f; }
+
+html[data-chatgpt-ui] .cg-model-provider-name::before { content: '›'; flex: none; width: 10px; color: var(--cg-muted, #8a8a8a); transition: transform 150ms cubic-bezier(.22,.8,.28,1); }
+
+html[data-chatgpt-ui] .cg-model-provider[open] > .cg-model-provider-name::before { transform: rotate(90deg); }
+
+html[data-chatgpt-ui] .cg-model-provider-name > span:first-of-type { flex: 1; min-width: 0; }
+
+html[data-chatgpt-ui] .cg-model-provider-count { flex: none; color: var(--cg-muted, #9a9a9a); font-size: 11px; font-weight: 400; }
+
+html[data-chatgpt-ui] .cg-model-provider-models { margin: 0 0 6px; padding: 0 0 0 18px; color: var(--cg-muted, #5f5f5f); font-size: 12px; line-height: 18px; }
+
+body[data-ds-dark-theme] .cg-model-provider-models { color: #a0a0a0; }
+
+html[data-chatgpt-ui] .cg-model-provider-site { display: inline-block; margin: 0 0 8px 18px; color: var(--cg-muted, #6b6b6b); font-size: 11px; text-decoration: none; }
+
+html[data-chatgpt-ui] .cg-model-provider-site:hover { text-decoration: underline; }
+
+/* The two modes opened by the zap button. They reuse the popover's geometry and the menu idiom already used
+
+   by the agent picker (`role="menuitemradio"` + `aria-checked`), so the panel needs no new interaction
+
+   machinery: Escape and outside-click already close the popover. */
+
+.cg-model-modes { display: flex; flex-direction: column; gap: 4px; padding: 4px 2px 2px; }
+
+.cg-model-mode { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 10px 12px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease; }
+
+/* Hover must not erase the selected row's tint: `.cg-model-mode:hover` is (0,2,0) and the selected
+   rule below is also (0,2,0), so the later rule would only win while the pointer is elsewhere. The
+   `:not([data-on="true"])` keeps the checked row visibly checked under the cursor. */
+.cg-model-mode:hover:not(:disabled):not([data-on="true"]), .cg-model-mode:focus-visible:not([data-on="true"]) { background: #0000000a; border-color: #00000012; }
+
+.cg-model-mode[data-on="true"] { border-color: #7b5cf04d; background: #7b5cf014; }
+
+.cg-model-mode:disabled { opacity: 0.5; cursor: default; }
+
+.cg-model-mode-check { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; color: var(--cg-effort-color); }
+
+.cg-model-mode-text { color: var(--cg-text); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.cg-model-mode-text > strong { font-size: 14px; font-weight: 600; letter-spacing: 0.1px; }
+
+.cg-model-mode-text > span { font-size: 12px; color: var(--cg-muted); }
+
+.cg-model-trigger-bolt[data-tree="true"] { width: 20px; }
+
+.cg-model-popover[data-superfast="true"] { --cg-effort-color: #e8a317; }
+
+/* The tier name on the collapsed trigger is set by an explicit purple rule, so inheriting the mode colour is not
+
+   enough for it; at the time of writing it was the last purple left on screen while 超快 was on. The root holds
+
+   both the trigger and the popover, which is why the mode rides there as well. */
+
+.cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-ultra="true"] { color: #e8a317; }
+
+.cg-model-popover[data-superfast="true"] .cg-model-slider-fill { background: linear-gradient(90deg, #dcb273 0%, #eed3a8 18%, #fdf6e4 38%, #ffe6a8 62%, #f7c948 82%, #e8a317 100%); }
+
+.cg-model-popover[data-superfast="true"] .cg-model-slider-shell::before { box-shadow: inset 0 0 0 1px #f7c9483d; }
+
+.cg-model-popover[data-superfast="true"] .cg-model-slider-shell .cg-model-meteors { display: block; }
+
+/* 超快 keeps the base streak ramp on ::before and only overrides the halo: a `background` on the element
+
+   would paint the unclipped rectangle behind the tapered smear and flatten the taper away. */
+
+.cg-model-popover[data-superfast="true"] .cg-model-meteor { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--cg-glow, #ffffff) 45%, #ffffffb8)); }
+
+.cg-model-popover[data-superfast="true"] .cg-model-meteors::before { background-image:
+
+    radial-gradient(1.5px 1.5px at 8% 30%, #ffe6a8cc, transparent),
+
+    radial-gradient(1.2px 1.2px at 20% 68%, #ffedbc, transparent),
+
+    radial-gradient(1.2px 1.2px at 28% 72%, #ffe6a8cc, transparent),
+
+    radial-gradient(1.8px 1.8px at 39% 22%, #f7c94899, transparent),
+
+    radial-gradient(1.2px 1.2px at 47% 26%, #f7c94899, transparent),
+
+    radial-gradient(1.1px 1.1px at 55% 74%, #f7c948cc, transparent),
+
+    radial-gradient(1.2px 1.2px at 66% 66%, #ffe6a8ee, transparent),
+
+    radial-gradient(1.4px 1.4px at 74% 34%, #ffe6a8cc, transparent),
+
+    radial-gradient(1.5px 1.5px at 84% 38%, #ffe6a8cc, transparent),
+
+    radial-gradient(1.1px 1.1px at 93% 74%, #f7c948cc, transparent); }
+
+.cg-model-popover[data-superfast="true"] .cg-model-slider-shell[data-effort] .cg-model-slider-fill::after { background: radial-gradient(ellipse 50% 50% at 50% 50%, #8a4d0de6 0%, #8a4d0d45 45%, #8a4d0d00 100%); }
+
+/* 超快's palette. Every rule is keyed on the root, which carries data-superfast for the trigger and the popover
+
+   alike. Selectors are one class deeper than the rules they must beat — the fill's depth buckets are (0,3,0) and
+
+   the tier-name rules are explicit colours, so neither can be reached by inheritance. Ultra keeps its own purple
+
+   ramp, untouched, because these only apply while 超快 is the chosen mode. */
+
+.cg-model-root[data-superfast="true"] .cg-model-popover { --cg-effort-color: #e8a317; }
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell .cg-model-slider-fill { background: linear-gradient(90deg, #dcb273 0%, #eed3a8 18%, #fdf6e4 38%, #ffe6a8 62%, #f7c948 82%, #e8a317 100%); }
+
+.cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-ultra="true"] { color: #e8a317; }
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="max"] .cg-model-summary strong,
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="xhigh"] .cg-model-summary strong { color: #e8a317; }
+
+.cg-model-root[data-superfast="true"] .cg-model-ultra-notice { color: #e8a317; }
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-ultra-notice { color: #f7ad31; }
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell::before { box-shadow: inset 0 0 0 1px #f7c9483d; }
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-ultra="true"] .cg-model-slider-dots span[data-ultra="true"] { background: #e8a317; box-shadow: 0 0 5px #e8a31799; }
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-ultra="true"] .cg-model-thumb { border-color: #ffe8a8; box-shadow: 0 0 6px #e8a31799, 0 0 16px #c8860d8c, 0 0 0 1px #ffffff99 inset; }
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-max="true"][data-ultra="true"] .cg-model-thumb { animation: none; }
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell .cg-model-meteors { display: block; }
+
+/* Same for the root-scoped 超快 branch. */
+
+.cg-model-root[data-superfast="true"] .cg-model-meteor { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--cg-glow, #ffffff) 45%, #ffffffb8)); }
+
+.cg-model-root[data-superfast="true"] .cg-model-meteors::before { background-image:
+
+    radial-gradient(1.5px 1.5px at 8% 30%, #ffffffdd, transparent),
+
+    radial-gradient(1.2px 1.2px at 20% 68%, #ffedbc, transparent),
+
+    radial-gradient(1.2px 1.2px at 28% 72%, #ffe6a8cc, transparent),
+
+    radial-gradient(1.8px 1.8px at 39% 22%, #ffffffcc, transparent),
+
+    radial-gradient(1.2px 1.2px at 47% 26%, #ffffffcc, transparent),
+
+    radial-gradient(1.1px 1.1px at 55% 74%, #f7c948cc, transparent),
+
+    radial-gradient(1.2px 1.2px at 66% 66%, #ffe6a8ee, transparent),
+
+    radial-gradient(1.4px 1.4px at 74% 34%, #ffffffdd, transparent),
+
+    radial-gradient(1.5px 1.5px at 84% 38%, #ffffffdd, transparent),
+
+    radial-gradient(1.1px 1.1px at 93% 74%, #f7c948cc, transparent); }
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell .cg-model-slider-fill::after { background: radial-gradient(ellipse 50% 50% at 50% 50%, #8a4d0de6 0%, #8a4d0d45 45%, #8a4d0d00 100%); }
+
+/* The dark theme carries its own, deeper selectors for the tier names and the glyph colour, so the light-only
+
+   rules above are not enough: the owner's panel is dark, which is why the first attempt looked like a no-op. */
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-popover { --cg-effort-color: #f0b429; }
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-ultra="true"],
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="max"] .cg-model-summary strong,
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="xhigh"] .cg-model-summary strong { color: #f0b429; }
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-trigger-bolt { color: #f0b429; }
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-zap[data-on="true"] { color: #f0b429; }
+
+.cg-model-root[data-superfast="true"] .cg-model-zap[data-on="true"] .cg-model-zap-glyph { filter: drop-shadow(0 0 5px #f7c9488c); }
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-ultra="true"] .cg-model-slider-dots span[data-ultra="true"] { background: #f0b429; box-shadow: 0 0 5px #f0b42999; }
+
+/* Longhand on purpose: the `background` shorthand resets `background-size`, and the glare is a 220%-wide layer
+
+   that sweeps by moving its position — with the size reset it could only pulse in place. */
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-ultra="true"]::after { background-size: 220% 100%; background-repeat: no-repeat; background-image: linear-gradient(105deg, #ffffff00 44%, #f0d9a88f 50%, #ffe9b09e 56%, #ffffff00 62%); }
+
+.cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="max"],
+
+.cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="xhigh"],
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="max"],
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="xhigh"] { color: #f0b429; }
+
+/* 超快: one fill colour per tier, except Max, which runs a wide amber ramp — bright gold on the left falling to
+
+   muted amber on the right — so it reads as a gradient at a glance instead of as one flat tone, and the ramp
+
+   passes through xhigh's flat #d9a534 rather than ending on it, which is what keeps the two distinguishable.
+
+   Medium is deliberately left on the shared six-stop ramp, since the brief named only Low, High, Max and Ultra.
+
+   That ramp used to run blue→gold; it is now warm end to end, because 超快 must not show blue at any tier. The
+
+   lightness arc is unchanged — mid camel → pale camel → cream → warm cream → gold → deep gold — so the bar still
+
+   reads as a gradient rather than a flat tone. */
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="low"] .cg-model-slider-fill { background: #e6cb97; }
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="minimal"] .cg-model-slider-fill { background: #e6cb97; }
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="high"] .cg-model-slider-fill { background: #dfb662; }
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="xhigh"] .cg-model-slider-fill { background: #d9a534; }
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="max"] .cg-model-slider-fill { background: linear-gradient(90deg, #f7c948 0%, #d9a534 52%, #c08d28 100%); }
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="ultra"] .cg-model-slider-fill { background: linear-gradient(90deg, #dfb662 0%, #dcae55 12%, #d9a534 42%, #e8b622 74%, #f7c948 100%); }
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="low"] .cg-model-slider-fill { background: #e8d09f; }
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="minimal"] .cg-model-slider-fill { background: #e8d09f; }
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="high"] .cg-model-slider-fill { background: #e0b766; }
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="xhigh"] .cg-model-slider-fill { background: #d9a534; }
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="max"] .cg-model-slider-fill { background: linear-gradient(90deg, #ffd45e 0%, #d9a534 52%, #c08d28 100%); }
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="ultra"] .cg-model-slider-fill { background: linear-gradient(90deg, #e0b766 0%, #ddb258 12%, #d9a534 42%, #eab820 74%, #f7c948 100%); }
+
+/* 超快 must not paint the empty tier. The superfast base fill rule is (0,4,0), one class deeper than the shared
+
+   transparent rules at (0,3,0), so without this the Off position showed a warm gold bar. */
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="off"] .cg-model-slider-fill,
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="none"] .cg-model-slider-fill { background: transparent; }
+
+/* 超快: at Off / Low / High the tier name takes High's own fill colour, so label and bar match. Max and the top tier
+
+   are untouched — they keep the mode's gold. */
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="off"] .cg-model-summary strong,
+
+.cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="off"],
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="none"] .cg-model-summary strong,
+
+.cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="none"],
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="low"] .cg-model-summary strong,
+
+.cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="low"],
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="minimal"] .cg-model-summary strong,
+
+.cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="minimal"],
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="high"] .cg-model-summary strong,
+
+.cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="high"] { color: #dfb662; }
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="off"] .cg-model-summary strong,
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="off"],
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="none"] .cg-model-summary strong,
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="none"],
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="low"] .cg-model-summary strong,
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="low"],
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="minimal"] .cg-model-summary strong,
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="minimal"],
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="high"] .cg-model-summary strong,
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-trigger-effort[data-effort="high"] { color: #e0b766; }
+
+/* Orchestration on: the whole effort panel glows in its tier colour — border plus halo, not just the track.
+
+   Colour comes from --cg-glow (tier colour by default, gold under superfast).
+
+   The halo itself lives on ::before, not on the popover. A keyframed box-shadow on the panel repaints the
+
+   whole surface on every frame and re-runs the eleven meteors' filters with it; painted once as a static
+
+   shadow and breathed with opacity only, the glow is composited and costs nothing per frame. The popover
+
+   keeps no colour shadow of its own any more, so the neutral drop shadow from the theme rules further down
+
+   survives untouched — which is also what leaves the off tier with an ordinary shadow instead of none. */
+
+.cg-model-root[data-lightning="true"] .cg-model-popover,
+
+.cg-model-root[data-superfast="true"] .cg-model-popover {
+
+  /* Full-saturation first, then the softened value: a browser without color-mix keeps the stronger one instead of
+
+     losing the declaration, and everyone else gets the quiet version. */
+
+  border-color: var(--cg-glow);
+
+  border-color: color-mix(in srgb, var(--cg-glow) 42%, transparent);
+
+  /* No `animation` here on purpose. The entrance is declared on the base `.cg-model-popover` rule (0,1,0);
+
+     re-declaring it at (0,3,0) outranks the reduced-motion stop — a media query adds no specificity — and
+
+     that is what used to re-open the entrance for lightning/superfast under reduced motion.
+
+     The breathing moved to ::before, next to the shadow it animates. */
+
+}
+
+/* The halo. `inset: 0` covers the whole panel and a positioned box paints above in-flow content, so
+
+   `pointer-events: none` is mandatory: without it the pseudo-element swallows every click meant for the
+
+   options, the search box and the buttons (measured with elementFromPoint — the static controls resolve to
+
+   the pseudo-element). `z-index: -1` is a second guard: it puts the halo under the panel's own content
+
+   while staying above the panel background, inside the stacking context that `z-index: 60` already gives
+
+   the popover. `border-radius: inherit` follows both the 19px default and the 16px model pane, no second
+
+   rule needed. `inset: 0` resolves against the padding box, so the halo starts 1px inside the border; at a
+
+   16px blur that offset is not visible.
+
+   Geometry is the midpoint of the old 12px/20px sweep: `0 0 16px 1px`. Alpha is the old 50% peak and
+
+   opacity runs .68 → 1 — exactly the 34% → 50% alpha the box-shadow keyframes used to animate. */
+
+.cg-model-root[data-lightning="true"] .cg-model-popover::before,
+
+.cg-model-root[data-superfast="true"] .cg-model-popover::before {
+
+  content: '';
+
+  position: absolute;
+
+  inset: 0;
+
+  z-index: -1;
+
+  border-radius: inherit;
+
+  pointer-events: none;
+
+  box-shadow: 0 0 16px 1px color-mix(in srgb, var(--cg-glow) 50%, transparent);
+
+  opacity: .68;
+
+  animation: cg-model-halo-breathe 2.6s ease-in-out 120ms infinite;
+
+}
+
+/* --cg-glow is read by the border above and by the halo. Every tier assigns it below; these two are the
+
+   neutral fallbacks for a tier this file does not name — off / none, or an id the host's effort catalogue
+
+   adds later. Without them the border would fall back to currentColor (near-black in the light theme,
+
+   near-white in the dark one) and the halo's box-shadow would become `none`, losing the neutral drop shadow
+
+   along with it. Neutral, never gold: gold belongs to 超快 alone. */
+
+.cg-model-popover { --cg-glow: #e6e6e6; }
+
+body[data-ds-dark-theme] .cg-model-popover { --cg-glow: #444; }
+
+.cg-model-root:not([data-superfast="true"]) .cg-model-popover[data-effort="minimal"] { --cg-glow: var(--cg-e2); }
+
+.cg-model-root:not([data-superfast="true"]) .cg-model-popover[data-effort="low"] { --cg-glow: var(--cg-e2); }
+
+.cg-model-root:not([data-superfast="true"]) .cg-model-popover[data-effort="medium"] { --cg-glow: var(--cg-e3); }
+
+.cg-model-root:not([data-superfast="true"]) .cg-model-popover[data-effort="high"] { --cg-glow: var(--cg-e4); }
+
+.cg-model-root:not([data-superfast="true"]) .cg-model-popover[data-effort="xhigh"] { --cg-glow: var(--cg-e5); }
+
+.cg-model-root:not([data-superfast="true"]) .cg-model-popover[data-effort="max"] { --cg-glow: var(--cg-e5); }
+
+.cg-model-root:not([data-superfast="true"]) .cg-model-popover[data-effort="ultra"],
+
+.cg-model-root:not([data-superfast="true"]) .cg-model-popover[data-max="true"] { --cg-glow: #bb74ff; }
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="off"] { --cg-glow: #e0b766; }
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="none"] { --cg-glow: #e0b766; }
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="minimal"] { --cg-glow: #e0b766; }
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="low"] { --cg-glow: #e0b766; }
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="medium"] { --cg-glow: #dfb662; }
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="high"] { --cg-glow: #dfb662; }
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="xhigh"] { --cg-glow: #d9a534; }
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="max"] { --cg-glow: #d9a534; }
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-effort="ultra"],
+
+.cg-model-root[data-superfast="true"] .cg-model-popover[data-max="true"] { --cg-glow: #f7c948; }
+
+/* Only the halo is left to stop. The panel's entrance is declared on the base `.cg-model-popover` rule
+
+   alone (0,1,0), so the equal-specificity stop in the reduced-motion block above already cancels it for
+
+   every tier and both themes. Nothing may re-open it here: a (0,3,0) animation declaration in this block
+
+   is exactly the regression that made lightning/superfast keep the 120ms entrance under reduced motion.
+
+   ::before does need its own clause — a rule on the popover cannot reach its pseudo-element's animation. */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .cg-model-root[data-lightning="true"] .cg-model-popover::before,
+
+  .cg-model-root[data-superfast="true"] .cg-model-popover::before { animation: none; }
+
+}
+
+/* Dark-mode overrides for the panels that now default to their light appearance.
+
+   They are appended last so they win on specificity ties against the single-class rules above. */
+
+body[data-ds-dark-theme] .cg-model-tooltip { background: #1c1e20; color: #fff; box-shadow: 0 5px 14px #00000052; }
+
+/* Light-mode glow policy: on a white panel a coloured halo reads as a ring painted onto the
+
+   surface, and the popover's halo breathes every 2.6s. Keep the state colour, drop the glow;
+
+   dark keeps its original values (all selectors below are light-only, so the dark rules above
+
+   are untouched). */
+
+body:not([data-ds-dark-theme]) .cg-model-zap[data-on="true"] .cg-model-zap-glyph { filter: none; }
+
+body:not([data-ds-dark-theme]) .cg-model-root[data-superfast="true"] .cg-model-zap[data-on="true"] .cg-model-zap-glyph { filter: none; }
+
+/* Gold is the one armed glow the light panel keeps. The blanket light rule above is (0,4,1);
+   the general tree glyph rule is (0,4,0), so without this restatement the light theme would drop
+   the gold halo and tree would be left with only its hue — which is what tells it apart from fast. */
+
+body:not([data-ds-dark-theme]) .cg-model-zap[data-on="true"][data-mode="tree"] .cg-model-zap-glyph { filter: drop-shadow(0 0 5px #f7c9488c); }
+
+/* No `animation` here on purpose. This selector is (0,2,1) and the reduced-motion stop on
+
+   `.cg-model-popover` is (0,1,0) — a media query adds no specificity — so an entrance animation
+
+   declared here kept playing in light + reduced motion while dark stayed still. The entrance comes
+
+   from the base `.cg-model-popover` rule above; the reduced-motion block cancels it for both themes. */
+
+body:not([data-ds-dark-theme]) .cg-model-popover { border-color: #e6e6e6; box-shadow: 0 6px 14px #0000000f, 0 0 0 1px #00000008; }
+
+body:not([data-ds-dark-theme]) .cg-model-slider-shell[data-ultra="true"] .cg-model-thumb { box-shadow: 0 0 0 1px #0000000f; }
+
+body:not([data-ds-dark-theme]) .cg-model-ultra-notice { color: #7a5cc4; }
+
+body:not([data-ds-dark-theme]) .cg-model-root[data-superfast="true"] .cg-model-ultra-notice { color: #b8860b; }
+
+body:not([data-ds-dark-theme]) .cg-model-popover[data-ultra="true"] .cg-model-slider-shell::before,
+
+body:not([data-ds-dark-theme]) .cg-model-popover[data-superfast="true"] .cg-model-slider-shell::before,
+
+body:not([data-ds-dark-theme]) .cg-model-root[data-superfast="true"] .cg-model-slider-shell::before,
+
+body:not([data-ds-dark-theme]) .cg-model-slider-shell[data-effort="max"]:not([data-ultra="true"])::before { box-shadow: none; }
+
+body:not([data-ds-dark-theme]) .cg-model-popover[data-superfast="true"] .cg-model-slider-dots span[data-ultra="true"] { box-shadow: none; }
+
+body[data-ds-dark-theme] .cg-model-popover { background-color: var(--cg-page); border-color: #444; box-shadow: 0 6px 14px #00000059; }
+
+body[data-ds-dark-theme] .cg-model-popover[data-pane="model"] { background-color: var(--cg-page); }
+
+body[data-ds-dark-theme] .cg-model-popover[data-pane="model"] .cg-model-option[aria-checked="true"] { background: #404043; color: #ececec; }
+
+body[data-ds-dark-theme] .cg-model-trigger[aria-expanded="true"] { background: #404043; }
+
+/* ------------------------------------------------------------------------------------------------
+   Orchestration modes own the whole rail.
+
+   The panel writes `data-lightning` and `data-superfast` on the root and repeats them on the popover.
+   Only `="true"` matches: the standard mode writes `"false"` on both, so every rule in this block drops
+   out and the per-tier ramp above is left exactly as it was.
+
+   The fill selectors are keyed on the shell instead of a tier id, which puts them one class above the
+   tier rules (0,3,0) and lets an id this file has never seen — or one a model invents — take the mode
+   colour instead of falling back to blue. Off/none keep painting nothing: the transparent stops at
+   (0,3,0) are still outranked by these, so the empty tiers are restated at the end of the block.
+
+   The gold side already exists above for every named tier. What it did not cover is a tier it does not
+   name: that id kept the neutral --cg-glow, so the halo, the sweep and the meteor heads lost their gold.
+   The base rule at the end of this block fills that one hole; the named rules are one class deeper and
+   still pick their own depth. */
+
+/* Fast wears upstream Ultra's purple. The light fill is upstream's own three-stop value; the dark
+   version lifts every stop instead of reusing the light one, because the same purple over #212121
+   reads as a dark bruise rather than as the mode's colour. */
+.cg-model-root[data-lightning="true"] .cg-model-slider-shell .cg-model-slider-fill {
+  background: linear-gradient(95deg, #5055f5 0%, #bb74ff 58%, #793af5 100%);
+}
+
+body[data-ds-dark-theme] .cg-model-root[data-lightning="true"] .cg-model-slider-shell .cg-model-slider-fill {
+  background: linear-gradient(95deg, #6f74ff 0%, #c98cff 58%, #8f49ff 100%);
+}
+
+/* --cg-effort-color paints the headline, the bolt and the summary; --cg-glow paints the popover
+   border, the halo, the sweep and the meteor heads. Both live on the popover because that is where
+   this file declares them and where the per-tier values are set. `[data-effort]` on the glow rule is
+   not a tier test: the attribute is always there, and one extra class is what lets this value beat
+   the per-tier glow rules above instead of tying with them and losing on order. */
+.cg-model-root[data-lightning="true"] .cg-model-popover { --cg-effort-color: #8a4ff0; }
+.cg-model-root[data-lightning="true"] .cg-model-popover[data-effort] { --cg-glow: #bb74ff; }
+
+body[data-ds-dark-theme] .cg-model-root[data-lightning="true"] .cg-model-popover { --cg-effort-color: #bb74ff; }
+body[data-ds-dark-theme] .cg-model-root[data-lightning="true"] .cg-model-popover[data-effort] { --cg-glow: #c98cff; }
+
+/* The collapsed trigger carries the same bolt, so it has to carry the same two colours: purple while
+   Fast is armed and gold for the tree. The base rule's #6f5bc4 is the standard-mode bolt. */
+.cg-model-root[data-lightning="true"] .cg-model-trigger-bolt { color: #8a4ff0; }
+.cg-model-root[data-superfast="true"] .cg-model-trigger-bolt { color: #e8a317; }
+
+/* Reached dots and the knob wear the same colour as the bar, so the mode reads as one object. Their
+   shapes and sizes are untouched; only the hairline and the glow change. The light theme follows the
+   file's existing policy and keeps a coloured hairline without the coloured halo, while the dark
+   theme keeps the soft glow the tier rules already use there. */
+.cg-model-root[data-lightning="true"] .cg-model-slider-dots span[data-on="true"] {
+  background: #f3eaff;
+  box-shadow: 0 0 0 1px #8a4ff066;
+}
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-dots span[data-on="true"] {
+  background: #fff8e6;
+  box-shadow: 0 0 0 1px #e8a31766;
+}
+
+.cg-model-root[data-lightning="true"] .cg-model-slider-shell .cg-model-thumb {
+  box-shadow: 0 0 0 1px #8a4ff099, 0 1px 3px #00000026;
+}
+
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell .cg-model-thumb {
+  box-shadow: 0 0 0 1px #e8a31799, 0 1px 3px #00000026;
+}
+
+body[data-ds-dark-theme] .cg-model-root[data-lightning="true"] .cg-model-slider-dots span[data-on="true"] {
+  background: #f6efff;
+  box-shadow: 0 0 0 1px #8a4ff099, 0 0 5px #bb74ff80;
+}
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-slider-dots span[data-on="true"] {
+  background: #fff3cf;
+  box-shadow: 0 0 0 1px #e8a31799, 0 0 5px #f7c94880;
+}
+
+body[data-ds-dark-theme] .cg-model-root[data-lightning="true"] .cg-model-slider-shell .cg-model-thumb {
+  box-shadow: 0 0 0 1px #bb74ffcc, 0 0 9px #a066ffb3, 0 0 18px #8b5cf680, 0 1px 3px #00000040;
+}
+
+body[data-ds-dark-theme] .cg-model-root[data-superfast="true"] .cg-model-slider-shell .cg-model-thumb {
+  box-shadow: 0 0 0 1px #f0b429cc, 0 0 9px #f7c948a6, 0 0 18px #c8860d80, 0 1px 3px #00000040;
+}
+
+/* The hairline around the track. Light gets the quiet version: the existing light rules drop the
+   coloured rim for the tiers that had one, so the new mode should not reintroduce a loud ring. Dark
+   keeps the soft rim the other orchestration states already wear. */
+.cg-model-root[data-lightning="true"] .cg-model-slider-shell::before {
+  box-shadow: inset 0 0 0 1px #8a4ff04d;
+}
+
+body:not([data-ds-dark-theme]) .cg-model-root[data-lightning="true"] .cg-model-slider-shell::before {
+  box-shadow: inset 0 0 0 1px #8a4ff02e;
+}
+
+body[data-ds-dark-theme] .cg-model-root[data-lightning="true"] .cg-model-slider-shell::before {
+  box-shadow: inset 0 0 0 1px #bb74ff5c;
+}
+
+/* The gold glow for an id the per-tier list above does not name. Three classes, deliberately below
+   the named rules' four, so those keep their own depth and only the unknown id lands here. One shared
+   value for both themes: a `body[data-ds-dark-theme]` version would add an element and an attribute,
+   outrank the named rules, and flatten every tier to one glow (observed before this comment existed). */
+.cg-model-root[data-superfast="true"] .cg-model-popover { --cg-glow: #e0b766; }
+
+/* Off and none stay empty in both modes. The mode fill rules are (0,4,0), the shared transparent
+   stops are (0,3,0), so without these a gold/purple bar would appear at a tier that has no fill. */
+.cg-model-root[data-lightning="true"] .cg-model-slider-shell[data-effort="off"] .cg-model-slider-fill,
+.cg-model-root[data-lightning="true"] .cg-model-slider-shell[data-effort="none"] .cg-model-slider-fill,
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="off"] .cg-model-slider-fill,
+.cg-model-root[data-superfast="true"] .cg-model-slider-shell[data-effort="none"] .cg-model-slider-fill { background: transparent; }
+
+/* The dark Fast fill is one class heavier than the light one (it has to beat the light rule), so the
+   transparent stops above tie with it instead of outranking it. Restating the stops under the same
+   `body[...]` prefix keeps Off empty in the dark theme as well. */
+body[data-ds-dark-theme] .cg-model-root[data-lightning="true"] .cg-model-slider-shell[data-effort="off"] .cg-model-slider-fill,
+body[data-ds-dark-theme] .cg-model-root[data-lightning="true"] .cg-model-slider-shell[data-effort="none"] .cg-model-slider-fill { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+.cg-model-ultra-notice,
+
+  .cg-model-popover .cg-model-zap,
+
+  .cg-model-popover .cg-model-summary,
+
+  .cg-model-popover .cg-model-reset { transition: none; }
+}
+
+@media(max-width: 720px) {
+.cg-model-popover { width: min(256px,calc(100vw - 80px)); }
+.cg-model-trigger { max-width: 40vw; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+.cg-model-thumb, .cg-model-slider-fill { transition: none; }
+.cg-model-popover { animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+.cg-model-meteor, .cg-model-meteors::before,
+
+  .cg-model-slider-shell[data-ultra="true"]::after,
+
+  .cg-model-slider-shell::after,
+
+  .cg-model-slider-shell[data-ultra="true"][data-max="true"] .cg-model-thumb { animation: none; }
+.cg-model-meteor { opacity: .45; }
+.cg-model-slider-shell[data-ultra="true"]::after { opacity: .35; background-position: 50% 0; }
+/* The new sweep parks at its bright midpoint, exactly like the old Ultra rule it replaces, instead
+   of running across the band. The streaks above stay as the static lit field. */
+.cg-model-slider-shell::after { opacity: .35; background-position: 50% 0; }
+/* The drifting deep purple parks in the middle instead of moving, and the bolt's sparkles
+
+     hold a steady glow. */
+
+  .cg-model-slider-shell[data-effort="ultra"] .cg-model-slider-fill::after { animation: none; transform: translateX(30%); }
+.cg-bolt-star { animation: none; opacity: .85; transform: none; }
+.cg-model-zap, .cg-model-zap-glyph { transition: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+.cg-model-pane, .cg-model-editor, .cg-model-viewer, .cg-menu, .cg-task-menu { animation: none; }
+.cg-button, .cg-model-option, .cg-model-rename, .cg-model-alias-save, .cg-model-alias-cancel,
+
+  .cg-model-summary, .cg-model-zap, .cg-model-reset, .cg-model-choice, .cg-rail-item,
+
+  .cg-task-menu .cg-button, .cg-task-row .cg-pinned-row { transition: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+html[data-chatgpt-ui] .cg-model-provider-name::before { transition: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+.cg-model-mode { transition: none; }
+}
+
+@keyframes cg-model-enter { from { opacity: 0; transform: translateY(3px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+@keyframes cg-bolt-twinkle {
+
+  0%, 100% { opacity: .35; transform: scale(.7); }
+
+  45% { opacity: 1; transform: scale(1.15); }
+
+}
+
+@keyframes cg-model-meteor {
+
+  0% { transform: translateX(-44px); opacity: 0; }
+
+  10% { opacity: 1; }
+
+  72% { opacity: .9; }
+
+  100% { transform: translateX(var(--cg-meteor-travel)); opacity: 0; }
+
+}
+
+@keyframes cg-model-glare {
+
+  0% { background-position: 150% 0; opacity: 0; }
+
+  18% { opacity: .9; }
+
+  70% { opacity: .9; }
+
+  100% { background-position: -60% 0; opacity: 0; }
+
+}
+
+@keyframes cg-model-twinkle { from { opacity: .3; } to { opacity: .6; } }
+
+@keyframes cg-soft-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }

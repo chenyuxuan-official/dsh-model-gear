@@ -1,0 +1,7 @@
+# Keep every text file LF in the repository, so the committed `lib/` bundle is byte-identical on
+# every platform (CI fails when a rebuild changes it).
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.woff2 binary
