@@ -41,7 +41,15 @@
     }
   },
   "license": "MIT",
-  "author": "shanfu",
+  "author": "chenyuxuan-official",
+  "homepage": "https://github.com/chenyuxuan-official/dsh-model-gear#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chenyuxuan-official/dsh-model-gear.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chenyuxuan-official/dsh-model-gear/issues"
+  },
   "keywords": [
     "dsh",
     "dsh-plugin",
