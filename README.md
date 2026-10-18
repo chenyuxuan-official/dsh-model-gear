@@ -80,6 +80,8 @@ dsh plugin --profile desktop add file:<绝对路径>/dsh-model-gear-0.4.0.tgz
 
 整个注入和路由都用 try/catch 兜底：写盘、日志、路由、注入任何一处失败，都不会影响宿主的一步或一个请求。
 
+**超快的第二层**：`SUPERFAST_POLICY` 要求 tier-1 子代理各自再开两个孙代理，但宿主默认只允许直接子代理（`@deepseek-ai/dsh-subagent` 的 `maxDepth` 默认 `1`），所以默认安装下超快实际就是 2 个子代理。要把第二层跑起来，把 `maxDepth` 调到 `2`——改法、验证和回滚见 [docs/subagent-depth.md](docs/subagent-depth.md)。
+
 ### 提示词（`src/orchestration-policy.js`）
 
 Lightning / Superfast 契约原文逐字取自上游（含原编号），另外提供 `fastNudge` / `treeNudge`（每轮提醒）、`CHILD_NOTE_ONE` / `CHILD_NOTE_TWO`（子会话分层）、`OFF_NOTICE`（关闭说明）。这一层只导出文本，不发任何请求。
@@ -106,6 +108,7 @@ lib/index.js                 宿主入口，re-export src/host.js
 scripts/build.mjs            把客户端模块拼成 lib/client.js（确定性输出）
 scripts/extract-css.mjs      从上游样式表筛出面板规则（开发工具）
 tests/                       四个 Node 测试，见下
+docs/subagent-depth.md       子代理深度：让「超快」长出第二层（宿主侧配置）
 ```
 
 ## 开发

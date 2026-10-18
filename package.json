@@ -22,6 +22,7 @@
   "files": [
     "lib",
     "src",
+    "docs",
     "cordis.patch.yml",
     "README.md",
     "CHANGELOG.md"
