@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- **面板自己渲染平台的模型名槽位**：模型名不再直接写 `model.name`，而是渲染 `conversation.input.model.label`（`trigger` / `menu` / `option` 三种 placement）。官方插件加在模型名旁的装饰现在会照常出现——例如 DeepSeek Flash 的「1017」发布徽标（`@deepseek-ai/dsh-client-ui-deepseek-model-label-1017`）。
+- 用户自定义显示名仍然优先；槽位不存在、没有贡献者或渲染抛错时回退到目录里的原名。
+- `tests/render.mjs` 覆盖这条路径：传入 `renderSlot` 时触发器使用槽位内容，不传时回退原名。
+
 ## 0.4.0
 
 **把「闪电编排」加回来**——0.3.0 删掉的那一堆提示词注入里，只恢复这一条。人设、Ultra 虚拟档、

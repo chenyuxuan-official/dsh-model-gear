@@ -21,7 +21,7 @@ dsh plugin --profile desktop add dsh-model-gear
 
 ```sh
 npm pack
-dsh plugin --profile desktop add file:<绝对路径>/dsh-model-gear-0.4.0.tgz
+dsh plugin --profile desktop add file:<绝对路径>/dsh-model-gear-<版本>.tgz
 ```
 
 装完重启一次应用。插件会出现在 profile 的 `package.json` 依赖里；卸载用 `dsh plugin --profile desktop remove dsh-model-gear`。
@@ -43,6 +43,7 @@ dsh plugin --profile desktop add file:<绝对路径>/dsh-model-gear-0.4.0.tgz
 - **模型列表**：按 provider 分组，支持搜索；「默认」组是当前模型加上最近用过的五个（`dsh-model-gear/recent-models`，只在本机 localStorage）。
 - **强度滑条**：档位全部来自宿主目录里该模型的 `reasoning.efforts`，不额外造虚拟档；拖动时只改本地预览，松手/键盘操作才写回；「重置」写回模型自己的 `defaultEffort`。
 - **显示名**：以 `provider/model` 为键存在本机 localStorage（键名沿用旧版的 `dsh-codex-ui/model-aliases`），只影响列表里的显示。
+- **模型名装饰**：面板自己渲染平台的 `conversation.input.model.label` 槽位（`trigger` / `menu` / `option` 三种 placement），所以官方插件加在模型名旁的装饰——比如 DeepSeek Flash 的「1017」发布徽标——会出现在触发器、面板标题和模型列表里；自己设的显示名优先。
 - **档位未知**：读不到宿主状态时不猜「标准」，滑条不画填充、闪电显示为灰、三档菜单禁用并提示「未同步」。
 
 **档位状态**由宿主持有，客户端只做三件事：挂载时读一次、切换时乐观更新（失败回滚）、每次打开面板再对齐一次。重读不会先清空当前值，早到的旧响应按序号丢弃，所以状态不会被来回覆盖。

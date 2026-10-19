@@ -235,4 +235,17 @@ const unsyncedZap = elementsWithClass(unsyncedEffortTree, 'cg-model-zap')[0];
 assert.equal(unsyncedZap?.props['data-mode'], 'unknown', 'the bolt says unknown instead of guessing a mode');
 assert.equal(unsyncedZap?.props['data-on'], false, 'the unknown bolt is not armed');
 
+// The platform decorates model names through `conversation.input.model.label` (the "1017" release badge
+// is one contribution). This panel replaces the whole composer control, so it must render that slot
+// itself — otherwise every such decoration silently disappears from the trigger and the model list.
+stateCursor = 0;
+stateOverrides[0] = true;
+stateOverrides[1] = 'effort';
+stateOverrides[2] = 'off';
+const labelledTree = captured.component({
+  ...props,
+  renderSlot: (name, owner, options) => `${owner.model.name} [${options.fallback}]`,
+});
+assert.ok(textOf(labelledTree).includes('DeepSeek-V4.1-Flash [DeepSeek-V4.1-Flash]'), 'the panel renders the model-label slot for the trigger');
+
 console.log('render ok:', text.replace(/\s+/g, ' ').slice(0, 160));
