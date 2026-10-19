@@ -130,7 +130,7 @@ function registerModelUI(ctx) {
     }
   }
 
-  function ModelControl({ locked, available, directory, load, select, sessionId, gear: gearApi, renderSlot }) {
+  function ModelControl({ locked, available, directory, load, select, sessionId, gear: gearApi }) {
     const subscribe = React.useCallback(listener => directory.subscribe(listener), [directory]);
     const snapshot = React.useCallback(() => directory.getSnapshot(), [directory]);
     const state = React.useSyncExternalStore(subscribe, snapshot);
@@ -211,27 +211,6 @@ function registerModelUI(ctx) {
     const label = trackUnknown ? state.retainedEffort || 'Off' : displayLevel ? effortLabel(displayLevel) : state.retainedEffort || 'Off';
     const effortTone = trackUnknown ? 'off' : steps[shownIndex]?.id ?? 'off';
     const modelName = chosen ? aliasOf(chosen.group.id, chosen.model) : state.current?.model || '选择模型';
-
-    // Official model labels live in the `conversation.input.model.label` slot — the "1017" release badge
-    // is one such contribution. This panel replaces the whole composer control, so it has to render that
-    // slot itself; otherwise every decoration the platform adds next to a model name silently disappears.
-    // A user-defined display name still wins: it is this panel's own feature, and the label slot only
-    // knows the catalog name. `renderSlot` is a standard prop of a slot component; tests pass none.
-    const labelFor = (group, model, placement, selected = false) => {
-      const own = aliases?.[aliasKey(group.id, model.id)];
-      if (own) return own;
-      if (typeof renderSlot !== 'function') return model.name;
-      try {
-        const node = renderSlot(
-          'conversation.input.model.label',
-          { provider: group, model, placement, selected },
-          { fallback: model.name },
-        );
-        return node ?? model.name;
-      } catch {
-        return model.name;
-      }
-    };
     const busy = locked || state.pending !== null;
 
     const close = React.useCallback(() => { setOpen(false); setDraftIndex(null); triggerRef.current?.focus(); }, []);
@@ -495,7 +474,7 @@ function registerModelUI(ctx) {
         h('button', {
           type: 'button', role: 'menuitemradio', 'aria-checked': isCurrent, className: 'cg-model-option', disabled: busy, onClick: pick
         }, [
-          h('span', null, [labelFor(group, model, 'option', isCurrent)]),
+          h('span', null, [aliasOf(group.id, model)]),
           isCurrent ? h(Icon, { name: 'check', size: 14 }) : null
         ])
       ]);
@@ -552,7 +531,7 @@ function registerModelUI(ctx) {
           title: rowHasAlias ? `原名 ${model.name}` : undefined,
           onClick: pick
         }, [
-          h('span', null, [labelFor(group, model, 'option', isCurrent)]),
+          h('span', null, [aliasOf(group.id, model)]),
           isCurrent ? h(Icon, { name: 'check', size: 14 }) : null
         ]),
         h('button', {
@@ -733,7 +712,7 @@ function registerModelUI(ctx) {
           onClick: () => { setPane('model'); focusPending.current = true; }
         }, [
           h('strong', { 'aria-live': 'polite' }, [steps.length ? label : '选择模型']),
-          h('span', { className: 'cg-model-summary-name' }, [chosen ? labelFor(chosen.group, chosen.model, 'menu') : modelName, h(Icon, { name: 'chevron', size: 11 })])
+          h('span', { className: 'cg-model-summary-name' }, [modelName, h(Icon, { name: 'chevron', size: 11 })])
         ]),
         h('button', {
           className: 'cg-model-reset', type: 'button', 'aria-label': '恢复默认强度',
@@ -785,7 +764,7 @@ function registerModelUI(ctx) {
         'aria-label': `选择模型，当前 ${modelName}${steps.length || state.retainedEffort ? `，推理强度 ${label}` : ''}`,
         onClick: () => (open ? close() : show())
       }, [
-        h('span', { className: 'cg-model-trigger-name' }, [chosen ? labelFor(chosen.group, chosen.model, 'trigger') : modelName]),
+        h('span', { className: 'cg-model-trigger-name' }, [modelName]),
         steps.length > 0 || state.retainedEffort ? h('span', { className: 'cg-model-trigger-effort', 'data-effort': effortTone }, [label]) : null,
         // Armed gears stay visible while the popover is closed. The glyph is decorative and the mode
         // is already spoken by the zap and the menu, hence aria-hidden on the svg.
