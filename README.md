@@ -40,7 +40,7 @@ dsh plugin --profile desktop add file:<绝对路径>/dsh-model-gear-0.4.0.tgz
 | `gear.read` / `gear.select` | 编排档位的读与写，走下面那条宿主路由 |
 | `available` | 子会话里为 `false`，面板不提供选择 |
 
-- **模型列表**：按 provider 分组，支持搜索；「默认」组是当前模型加上最近用过的五个（`dsh-model-gear/recent-models`，只在本机 localStorage）。
+- **模型列表**：按 provider 分组，支持搜索；「默认」组只显示最常用的那一个模型（按使用频次统计，`dsh-model-gear/model-usage`，只在本机 localStorage）。
 - **强度滑条**：档位全部来自宿主目录里该模型的 `reasoning.efforts`，不额外造虚拟档；拖动时只改本地预览，松手/键盘操作才写回；「重置」写回模型自己的 `defaultEffort`。
 - **显示名**：以 `provider/model` 为键存在本机 localStorage（键名沿用旧版的 `dsh-codex-ui/model-aliases`），只影响列表里的显示。
 - **模型名装饰**：平台把「1017」这类发布徽标挂在 `conversation.input.model.label` 子槽位上，而该子槽位只能由声明它的官方模型选择组件渲染——本插件替换了整个 composer 控件，框架不允许第二个注册项复用该子槽位，所以这类装饰不会出现在本面板里。

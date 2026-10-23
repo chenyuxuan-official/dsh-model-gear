@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.3
+
+- **默认模型组只展示一个最常用模型**：原版「默认」组展示当前模型加最近用过的 5 个模型，列表过长；现改为仅展示使用频次最高的一个模型（按 `dsh-model-gear/model-usage` 统计，无使用记录时回退当前模型，仅保存在本机 localStorage，自动兼容旧版 recent-models）。
+
 ## 0.4.2
 
 - **撤回 0.4.1 的模型名槽位接入。** 0.4.1 试图在面板里渲染平台的 `conversation.input.model.label`（官方「1017」发布徽标所在的子槽位），实测框架不允许：`renderSlot` 只提供给**自己声明了子槽位**的注册项，而该子槽位已由官方模型选择组件声明；同一个子槽位不能被第二个注册项重复声明（框架抛 `slot "conversation.input.model.label" is already declared`）。替换整个 composer 控件的插件拿不到这个渲染入口，因此该徽标不会出现在本面板里。

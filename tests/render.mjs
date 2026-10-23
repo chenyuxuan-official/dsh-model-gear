@@ -145,7 +145,12 @@ function gearFlags(tree, className) {
 const text = textOf(tree);
 assert.ok(text.includes('DeepSeek-V4.1-Flash'), 'current model renders');
 assert.ok(text.includes('默认'), 'default group header renders');
-assert.ok(text.includes('DeepSeek-V4.1-Pro'), 'recent model from storage renders in the default group');
+assert.ok(text.includes('DeepSeek-V4.1-Pro'), 'most-used model renders in the default group');
+
+let defaultGroupNode = null;
+walk(tree, (node) => { if (node?.key === 'cg-default-group') defaultGroupNode = node; });
+assert.ok(defaultGroupNode, 'default group node renders');
+assert.equal(elementsWithClass(defaultGroupNode, 'cg-model-viewer').length, 1, 'default group displays exactly one model');
 
 // The effort pane: the sliding track and its flowing shower exist at an ordinary tier, not only at the
 // top one. Re-render with the pane scripted to `effort` (hook position 1) and the model at `medium`.
