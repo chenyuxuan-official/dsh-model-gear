@@ -22,11 +22,12 @@ process.env.DSH_HOME = home;
 
 let rpcSequence = 0;
 
-function makeContext({ withConnection = true, withInject = true } = {}) {
+function makeContext({ withConnection = true, withInject = true, selection, cwd } = {}) {
   const handlers = {};
   let capturedRoute;
   const ctx = {
     logger: { info() {}, warn() {} },
+    ...(selection !== undefined ? { get(name) { assert.equal(name, 'subagentModelSelection'); return selection; } } : {}),
     on(name, fn) {
       handlers[name] = fn;
       return () => {};
@@ -219,7 +220,40 @@ try {
   }, async () => enter());
   assert.deepEqual(textsOf(offAfterRestart), [OFF_NOTICE], 'a contract from a previous process is retracted too');
 
-  // 7. A host with no connection service, and a host with no inject at all, must not throw.
+  // 7. Official child-model selection is advisory-only and dynamically feature-detected.
+  const official = makeContext({ selection: {
+    current: () => ({ enabled: true, allowedModels: [
+      { provider: 'cpa', model: 'gpt-6.1-terra' },
+      { provider: 'cpa', model: 'gpt-6.1-terra' },
+      { provider: '', model: 'ignored' },
+    ] }),
+  } });
+  apply(official.ctx);
+  const officialRoute = official.route();
+  await updateMode(officialRoute, 'official-session', 'fast');
+  const officialHandler = official.handlers['agent/pre-step'];
+  const officialFirst = await officialHandler(parentPayload({ id: 'official-session' }), async () => enter());
+  const officialTexts = textsOf(officialFirst);
+  assert.equal(officialTexts.length, 3, 'enabled official selection adds one advisory beside contract and nudge');
+  assert.match(officialTexts.find(text => text.includes('Subagent model selection')), /Source: official subagentModelSelection/);
+  assert.match(officialTexts.find(text => text.includes('Subagent model selection')), /cpa\/gpt-6\.1-terra/);
+  assert.match(officialTexts.find(text => text.includes('Subagent model selection')), /does not enforce/);
+  const officialRepeated = await officialHandler(parentPayload({ id: 'official-session', deriveMessages: () => officialFirst.messages }), async () => enter());
+  assert.deepEqual(textsOf(officialRepeated), [], 'official advisory is de-duplicated from the log');
+  const officialChild = await officialHandler({
+    ...childPayload,
+    agent: { ...childPayload.agent, id: 'official-child' },
+  }, async () => enter());
+  assert.deepEqual(textsOf(officialChild), [CHILD_NOTE_ONE], 'official advisory is not injected into child sessions');
+
+  const disabled = makeContext({ selection: { current: () => ({ enabled: false, allowedModels: [{ provider: 'cpa', model: 'ignored' }] }) } });
+  apply(disabled.ctx);
+  const disabledRoute = disabled.route();
+  await updateMode(disabledRoute, 'disabled-session', 'fast');
+  const disabledStep = await disabled.handlers['agent/pre-step'](parentPayload({ id: 'disabled-session' }), async () => enter());
+  assert.equal(textsOf(disabledStep).length, 2, 'disabled official selection preserves the old fast output');
+
+  // 8. A host with no connection service, and a host with no inject at all, must not throw.
   const noConnection = makeContext({ withConnection: false });
   assert.doesNotThrow(() => apply(noConnection.ctx));
   assert.equal(noConnection.route(), undefined);

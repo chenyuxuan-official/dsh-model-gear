@@ -151,6 +151,9 @@ let defaultGroupNode = null;
 walk(tree, (node) => { if (node?.key === 'cg-default-group') defaultGroupNode = node; });
 assert.ok(defaultGroupNode, 'default group node renders');
 assert.equal(elementsWithClass(defaultGroupNode, 'cg-model-viewer').length, 1, 'default group displays exactly one model');
+const mostUsedRows = [];
+walk(tree, (node) => { if (node.props?.className === 'cg-model-row' && textOf(node).includes('DeepSeek-V4.1-Pro')) mostUsedRows.push(node); });
+assert.equal(mostUsedRows.length, 0, 'the most-used model is not repeated in the provider catalogue');
 
 // The effort pane: the sliding track and its flowing shower exist at an ordinary tier, not only at the
 // top one. Re-render with the pane scripted to `effort` (hook position 1) and the model at `medium`.

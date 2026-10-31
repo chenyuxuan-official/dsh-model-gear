@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0
+
+- 新增官方 `subagentModelSelection` 兼容：读取官方允许的 `provider/model` 路由，并在父会话中给出 advisory；真正的子代理创建和模型约束仍由宿主工具负责。
+- 新增显式 `agents.md` / `AGENTS.md` 路由格式，使用 `dsh-model-gear:routes-v1` marker 与严格 JSON schema 描述任务类型、关键词、推荐模型、推理强度和优先级。
+- 当官方模型选择服务缺失、关闭、异常、异步或返回格式不匹配时，保持原有 fast/tree 行为，不增加额外可见消息。
+- 增加路由解析、allowlist 兼容性、回退行为和父/子会话注入测试；README 补充配置示例、查找规则和故障排查说明。
+- 默认模型组中的快捷模型不再在提供商目录中重复显示；不同 provider 的同名模型仍会保留。
+
 ## 1.0.0
 
 🎉 **首个正式稳定版本（Production Ready）**。

@@ -1,12 +1,12 @@
 {
   "name": "dsh-model-gear",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "DeepSeek Harness 输入框的模型挡位面板：模型选择、推理强度滑条、显示名，外加闪电编排三档（唯一的提示词注入）· Model gear for the DSH composer; the only prompt text it adds is the Lightning contract",
   "type": "module",
   "main": "./lib/index.js",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node tests/smoke.mjs && node tests/render.mjs && node tests/host.mjs && node tests/style-owner.mjs",
+    "test": "node tests/smoke.mjs && node tests/render.mjs && node tests/host.mjs && node tests/routing.mjs && node tests/style-owner.mjs",
     "check": "node scripts/build.mjs && git diff --exit-code -- lib",
     "prepack": "node scripts/build.mjs"
   },

@@ -22,6 +22,12 @@ import {
   fastNudge,
   treeNudge,
 } from './orchestration-policy.js';
+import {
+  compatibleRouting,
+  loadRoutingConfig,
+  readOfficialModelSelection,
+  routingNotice,
+} from './subagent-routing.js';
 
 const ROUTE_PATH = '/api/dsh-model-gear/orchestration';
 const CLIENT_METHOD = 'dsh-model-gear/orchestration';
@@ -170,6 +176,15 @@ function injectedMessage(text) {
   };
 }
 
+function routingForAgent(agent, ctx) {
+  const official = readOfficialModelSelection(ctx);
+  if (!official) return undefined;
+  const cwd = agent?.session?.header?.cwd;
+  const configured = loadRoutingConfig(cwd, message => warn(ctx, message));
+  const routing = compatibleRouting(official, configured);
+  return routingNotice(official, routing);
+}
+
 /** Read the session log without letting a host-side getter break the step. */
 function derivedMessages(agent) {
   try {
@@ -287,6 +302,11 @@ function createPreStepHandler(ctx, sessions) {
         // though the previous mode's text is still somewhere in the log.
         const current = newestContractText(derived) ?? newestContractText(decision.messages);
         if (current !== contract && !alreadyAppended(contract)) append(contract);
+
+        // The official model-selection service owns enforcement. This optional advisory is read on
+        // every parent step so a settings change is reflected without changing the old fallback.
+        const selection = routingForAgent(agent, ctx);
+        if (selection && needs(selection)) append(selection);
 
         // Steps 1..3 of every turn. The opening reminder alone was not enough in the upstream
         // measurement: by the time the model answers, a single reminder is several tool results behind
