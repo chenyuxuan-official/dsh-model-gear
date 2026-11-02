@@ -19,6 +19,11 @@ body[data-ds-dark-theme] {
 }
 
 .cg-model-root { position: relative; min-width: 0; color: var(--cg-text); }
+.cg-image-prompt { width: 100%; box-sizing: border-box; resize: vertical; margin: 10px 0 8px; padding: 8px; border: 1px solid #d7d7d7; border-radius: 8px; background: var(--cg-page); color: var(--cg-text); font: inherit; }
+.cg-image-size { width: 100%; margin-bottom: 8px; padding: 6px; border: 1px solid #d7d7d7; border-radius: 7px; background: var(--cg-page); color: var(--cg-text); }
+.cg-image-generate { width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: #3982fa; color: #fff; cursor: pointer; }
+.cg-image-generate:disabled { opacity: .55; cursor: default; }
+.cg-image-result { margin: 8px 0 0; color: #278548; font-size: 11px; overflow-wrap: anywhere; }
 
 /* The two orchestration inks as custom properties, so the component can paint a bolt inline without
    having to know which theme is active. An inline colour is the one declaration no attribute-keyed

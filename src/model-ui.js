@@ -87,11 +87,19 @@ function registerModelUI(ctx) {
     const rpc = connection()?.rpc;
     if (typeof rpc?.call !== 'function') throw new Error('未连接宿主，无法读取编排档位。');
     const result = await rpc.call('/api', 'dsh-model-gear/orchestration', payload);
-    // `ok === false` is the host's explicit refusal. Anything else — including a plain value object
-    // from a test stub — is treated as the value itself, so the panel stays tolerant of both shapes.
     if (result?.ok === false) throw new Error(result.error?.message || '编排档位写入失败。');
     return result?.value ?? result ?? {};
   }
+
+  async function imageRequest(payload) {
+    const rpc = connection()?.rpc;
+    if (typeof rpc?.call !== 'function') throw new Error('未连接宿主，无法生成图片。');
+    const result = await rpc.call('/api', 'dsh-model-gear/orchestration', { ...payload, action: 'generate-image' });
+    if (result?.ok === false) throw new Error(result.error?.message || '图片生成失败。');
+    return result?.value ?? result ?? {};
+  }
+
+  const isImageModel = model => typeof model === 'string' && model.startsWith('gpt-image-');
 
   function readRecentModels() {
     try {
@@ -172,7 +180,7 @@ function registerModelUI(ctx) {
     }
   }
 
-  function ModelControl({ locked, available, directory, load, select, sessionId, gear: gearApi }) {
+  function ModelControl({ locked, available, directory, load, select, sessionId, image: imageApi, gear: gearApi }) {
     const subscribe = React.useCallback(listener => directory.subscribe(listener), [directory]);
     const snapshot = React.useCallback(() => directory.getSnapshot(), [directory]);
     const state = React.useSyncExternalStore(subscribe, snapshot);
@@ -184,6 +192,10 @@ function registerModelUI(ctx) {
     const [query, setQuery] = React.useState('');
     const [draftIndex, setDraftIndex] = React.useState(null);
     const [actionError, setActionError] = React.useState(null);
+    const [imagePrompt, setImagePrompt] = React.useState('');
+    const [imageSize, setImageSize] = React.useState('1024x1024');
+    const [imageBusy, setImageBusy] = React.useState(false);
+    const [imageResult, setImageResult] = React.useState(null);
     const rootRef = React.useRef(null);
     const triggerRef = React.useRef(null);
     const popupRef = React.useRef(null);
@@ -286,7 +298,10 @@ function registerModelUI(ctx) {
     const thumbX = Math.max(0, shellWidth - 24) * knobRatio;
 
     React.useEffect(() => { if (effortTarget.current === null || effortTarget.current === effectiveValue) setDraftIndex(null); }, [effectiveValue]);
-    React.useEffect(() => { effortQueue.current = null; effortTarget.current = null; setDraftIndex(null); }, [state.current?.provider, state.current?.model]);
+    React.useEffect(() => {
+      effortQueue.current = null; effortTarget.current = null; setDraftIndex(null);
+      setImagePrompt(''); setImageResult(null); setImageBusy(false);
+    }, [state.current?.provider, state.current?.model]);
     React.useEffect(() => {
       if (state.current?.provider && state.current?.model) {
         recordModelUsage(state.current.provider, state.current.model);
@@ -754,6 +769,29 @@ function registerModelUI(ctx) {
       onPointerLeave: () => { shellRectRef.current = null; thumbRef.current?.removeAttribute('data-over'); }
     }, [fill, meteors, dots, thumb, slider]);
 
+    const imageMode = isImageModel(state.current?.model);
+    React.useEffect(() => { if (imageMode && pane === 'effort') setPane('image'); if (!imageMode && pane === 'image') setPane('effort'); }, [imageMode, pane]);
+    const generateImage = async () => {
+      const prompt = imagePrompt.trim();
+      if (!imageMode || !prompt || imageBusy || busy || !state.current) return;
+      setImageBusy(true); setActionError(null); setImageResult(null);
+      try {
+        const value = await (typeof imageApi?.generate === 'function' ? imageApi.generate({ sessionId, model: state.current.model, prompt, size: imageSize }) : imageRequest({ sessionId, model: state.current.model, prompt, size: imageSize }));
+        setImageResult(value);
+      } catch (error) { setActionError(error?.message || String(error)); }
+      finally { setImageBusy(false); }
+    };
+    const imagePane = h('div', { className: 'cg-model-pane', key: 'image' }, [
+      h('div', { className: 'cg-model-catalog-title' }, ['图片生成']),
+      h('textarea', { className: 'cg-image-prompt', value: imagePrompt, rows: 4, placeholder: '输入图片提示词…', 'aria-label': '图片提示词', disabled: imageBusy || busy, onChange: event => setImagePrompt(event.target.value) }),
+      h('select', { className: 'cg-image-size', value: imageSize, 'aria-label': '图片尺寸', disabled: imageBusy || busy, onChange: event => setImageSize(event.target.value) }, [
+        h('option', { value: '1024x1024' }, ['1024×1024']), h('option', { value: '1536x1024' }, ['1536×1024']), h('option', { value: '1024x1536' }, ['1024×1536'])
+      ]),
+      h('button', { className: 'cg-image-generate', type: 'button', disabled: imageBusy || busy || !imagePrompt.trim(), onClick: generateImage }, [imageBusy ? '生成中…' : '生成图片']),
+      imageResult?.path ? h('p', { className: 'cg-image-result', role: 'status' }, [`已保存：${imageResult.path}`]) : null,
+      actionError ? h('p', { className: 'cg-model-error', role: 'alert' }, [actionError]) : null,
+    ]);
+
     const effortPane = h('div', { className: 'cg-model-pane', key: 'effort' }, [
       h('div', { className: 'cg-model-top' }, [
         // Top-left bolt: opens the gear page. `data-mode` stays `unknown` until the host answers, so
@@ -812,7 +850,7 @@ function registerModelUI(ctx) {
       className: 'cg-model-popover', ref: popupRef, role: 'dialog', 'aria-label': '模型与推理强度',
       'data-pane': pane, 'data-effort': effortTone,
       'data-lightning': gear === 'fast', 'data-superfast': gear === 'tree'
-    }, [pane === 'gear' ? gearPane : pane === 'effort' ? effortPane : pane === 'providers' ? providersPane : modelPane]);
+    }, [pane === 'gear' ? gearPane : pane === 'effort' ? (imageMode ? imagePane : effortPane) : pane === 'image' ? imagePane : pane === 'providers' ? providersPane : modelPane]);
 
     return h('div', {
       className: 'cg-model-root', ref: rootRef, 'data-effort': effortTone,
@@ -855,6 +893,7 @@ function registerModelUI(ctx) {
             directory: directory.store,
             load: () => { if (available) directory.load().catch(() => {}); },
             select: selection => (available ? directory.select(selection) : Promise.resolve(undefined)),
+            image: { generate: payload => imageRequest(payload) },
             // The gear goes through the host route only. Keeping the calls in the injected props means
             // the component never has to know how the Connection carrier is obtained.
             gear: {

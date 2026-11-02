@@ -29,13 +29,16 @@ const selection = readOfficialModelSelection({ get(name) { assert.equal(name, 's
 assert.deepEqual(selection.routes, [{ provider: 'cpa', model: 'gpt-6.1-terra' }]);
 assert.equal(readOfficialModelSelection({ get() { return { current: () => Promise.resolve({ enabled: true, allowedModels: [] }) }; } }), undefined, 'async settings are ignored');
 assert.equal(readOfficialModelSelection({ get() { throw new Error('missing'); } }), undefined, 'missing settings are tolerated');
-assert.deepEqual(readOfficialModelSelection({ get() { return { current: () => ({ enabled: true, allowedModels: [] }) }; } }), { routes: [] }, 'enabled empty allowlist remains an official enabled state');
+const emptySelection = readOfficialModelSelection({ get() { return { current: () => ({ enabled: true, allowedModels: [] }) }; } });
+assert.deepEqual(emptySelection.routes, [], 'enabled empty allowlist remains an official enabled state');
 
 const compatible = compatibleRouting(selection, routing);
 assert.equal(compatible.routes[0].available, true);
 const unavailable = compatibleRouting({ routes: [{ provider: 'cpa', model: 'other' }] }, routing);
 assert.equal(unavailable.routes[0].available, false);
-assert.match(routingNotice(selection, unavailable), /unavailable under the official allowlist/);
+assert.match(routingNotice(selection, unavailable), /recommended/);
+assert.match(routingNotice(selection, unavailable), /Available official models/);
+assert.match(routingNotice(selection, unavailable), /unavailable \(unavailable under the official allowlist\)/);
 
 const root = mkdtempSync(join(tmpdir(), 'dsh-model-gear-routing-'));
 try {

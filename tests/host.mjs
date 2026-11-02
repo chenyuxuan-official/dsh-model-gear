@@ -25,8 +25,9 @@ let rpcSequence = 0;
 function makeContext({ withConnection = true, withInject = true, selection, cwd } = {}) {
   const handlers = {};
   let capturedRoute;
+  const logRows = [];
   const ctx = {
-    logger: { info() {}, warn() {} },
+    logger: { info(message) { logRows.push(message); }, warn() {} },
     ...(selection !== undefined ? { get(name) { assert.equal(name, 'subagentModelSelection'); return selection; } } : {}),
     on(name, fn) {
       handlers[name] = fn;
@@ -41,7 +42,7 @@ function makeContext({ withConnection = true, withInject = true, selection, cwd 
         : {});
     };
   }
-  return { ctx, handlers, route: () => capturedRoute };
+  return { ctx, handlers, route: () => capturedRoute, logs: logRows };
 }
 
 function requestEnvelope(payload, rpcId) {
@@ -118,6 +119,9 @@ try {
   assert.ok(firstTexts.includes(LIGHTNING_POLICY), 'the Lightning contract is injected');
   assert.ok(firstTexts.includes(fastNudge(1, 1)), 'step 1 also carries the reminder');
   assert.equal(firstTexts.length, 2, 'one step receives at most the contract and one nudge');
+  assert.match(host.logs.at(-1), /"session":"session-fast"/);
+  assert.match(host.logs.at(-1), /"mode":"fast"/);
+  assert.doesNotMatch(host.logs.at(-1), /prompt|token/i);
 
   const repeated = await handler(
     parentPayload({ deriveMessages: () => first.messages }),
@@ -232,13 +236,20 @@ try {
   const officialRoute = official.route();
   await updateMode(officialRoute, 'official-session', 'fast');
   const officialHandler = official.handlers['agent/pre-step'];
-  const officialFirst = await officialHandler(parentPayload({ id: 'official-session' }), async () => enter());
+  const officialFirst = await officialHandler({
+    ...parentPayload({ id: 'official-session' }),
+    agent: { id: 'official-session', options: { provider: 'cpa', model: 'gpt-6.1-sol' }, session: { header: { cwd: process.cwd() }, deriveMessages: () => [] }, inbox: {} },
+  }, async () => enter());
   const officialTexts = textsOf(officialFirst);
+  assert.ok(official.logs.some(row => row.includes('orchestration observable') && row.includes('"mode":"fast"') && row.includes('"route":"feature-implementation"') && row.includes('"selectedModel":"cpa/gpt-6.1-sol"')), 'observability records mode, recommended route and selected model without prompt text');
   assert.equal(officialTexts.length, 3, 'enabled official selection adds one advisory beside contract and nudge');
   assert.match(officialTexts.find(text => text.includes('Subagent model selection')), /Source: official subagentModelSelection/);
   assert.match(officialTexts.find(text => text.includes('Subagent model selection')), /cpa\/gpt-6\.1-terra/);
   assert.match(officialTexts.find(text => text.includes('Subagent model selection')), /does not enforce/);
-  const officialRepeated = await officialHandler(parentPayload({ id: 'official-session', deriveMessages: () => officialFirst.messages }), async () => enter());
+  const officialRepeated = await officialHandler({
+    ...parentPayload({ id: 'official-session' }),
+    agent: { id: 'official-session', options: { provider: 'cpa', model: 'gpt-6.1-sol' }, session: { header: { cwd: process.cwd() }, deriveMessages: () => officialFirst.messages }, inbox: {} },
+  }, async () => enter());
   assert.deepEqual(textsOf(officialRepeated), [], 'official advisory is de-duplicated from the log');
   const officialChild = await officialHandler({
     ...childPayload,
@@ -272,7 +283,14 @@ try {
   const badJson = await route.fetch({ json: async () => { throw new Error('not json'); } });
   assert.equal(badJson.status, 400);
 
-  console.log('host ok: route, persistence, fast/tree injection, dedupe, off notice, child note, no-connection tolerance');
+  // 9. Image generation is strictly gated before credentials or network work: ordinary chat models
+  // cannot reach the Images API path.
+  const ordinaryImage = await post(route, { action: 'generate-image', sessionId: 'image-session', model: 'gpt-6.1-terra', prompt: 'fixture' });
+  assert.equal(ordinaryImage.result.ok, false);
+  assert.equal(ordinaryImage.result.error.code, 'image/invalid-model');
+  assert.match(ordinaryImage.result.error.message, /gpt-image/);
+
+  console.log('host ok: route, persistence, fast/tree injection, dedupe, off notice, child note, image-model gate');
 } finally {
   if (originalHome === undefined) delete process.env.DSH_HOME;
   else process.env.DSH_HOME = originalHome;

@@ -37,6 +37,77 @@ const INJECTED_KIND = 'plugin:dsh-model-gear';
 const MODES = new Set(['off', 'fast', 'tree']);
 const MAX_SESSIONS = 40;
 const TIER_LINE = /^Tier:\s*(\d+)\s+of\s+2/m;
+const IMAGE_MODEL = /^gpt-image-/;
+const DEFAULT_IMAGE_DIR = 'D:\\javadata\\生图图片';
+const BLOG_IMAGE_DIR = 'E:\\博客\\images';
+
+function isImageModel(model) {
+  return typeof model === 'string' && IMAGE_MODEL.test(model);
+}
+
+function imageApiBase() {
+  const configured = process.env.CPA_BASE_URL || process.env.OPENAI_BASE_URL || 'http://127.0.0.1:8317/v1';
+  return configured.replace(/\/+$/, '');
+}
+
+function imageApiKey() {
+  const direct = process.env.CPA_API_KEY || process.env.OPENAI_API_KEY;
+  if (typeof direct === 'string' && direct.trim()) return direct.trim();
+  const candidates = [
+    'D:\\CLIProxyAPI\\config.yaml',
+    'C:\\CLIProxyAPI\\config.yaml',
+    join(homedir(), '.cli-proxy-api', 'config.yaml'),
+  ];
+  for (const file of candidates) {
+    try {
+      const text = readFileSync(file, 'utf8');
+      const block = text.match(/(?:^|\n)\s*api-keys:\s*\n([\s\S]*?)(?=\n\S|$)/i)?.[1];
+      const key = block?.match(/^\s*-\s*["']?([^#"'\r\n]+)["']?\s*$/m)?.[1]?.trim();
+      if (key) return key;
+    } catch { /* try next configured location */ }
+  }
+  return undefined;
+}
+
+function imageDirectory(cwd) {
+  return typeof cwd === 'string' && /^E:\\博客(?:\\|$)/i.test(cwd) ? BLOG_IMAGE_DIR : DEFAULT_IMAGE_DIR;
+}
+
+function safeImageName(name) {
+  const stem = String(name || 'generated-image').trim().replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'generated-image';
+  return stem.toLowerCase().endsWith('.png') ? stem.toLowerCase() : `${stem.toLowerCase()}.png`;
+}
+
+async function generateImage(ctx, payload) {
+  if (!isImageModel(payload?.model)) return { ok: false, error: { code: 'image/invalid-model', message: '只有 gpt-image-* 模型可以生成图片。' } };
+  if (typeof payload?.sessionId !== 'string' || payload.sessionId.length === 0 || payload.sessionId.length > 256) return { ok: false, error: { code: 'image/invalid-session', message: '会话参数无效。' } };
+  const prompt = typeof payload?.prompt === 'string' ? payload.prompt.trim() : '';
+  if (!prompt || prompt.length > 8000) return { ok: false, error: { code: 'image/invalid-prompt', message: '图片提示词不能为空且不能超过 8000 个字符。' } };
+  const apiKey = imageApiKey();
+  if (!apiKey) return { ok: false, error: { code: 'image/missing-key', message: '未找到 CPA_API_KEY，图片未生成。' } };
+  const size = ['1024x1024', '1024x1536', '1536x1024'].includes(payload.size) ? payload.size : '1024x1024';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 600000);
+  try {
+    const response = await fetch(`${imageApiBase()}/images/generations`, {
+      method: 'POST', headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ model: payload.model, prompt, size, n: 1, response_format: 'b64_json' }), signal: controller.signal,
+    });
+    const body = await response.json().catch(() => undefined);
+    if (!response.ok) return { ok: false, error: { code: `image/http-${response.status}`, message: `图片接口返回 HTTP ${response.status}，图片未生成。` } };
+    const b64 = body?.data?.[0]?.b64_json;
+    if (typeof b64 !== 'string' || !b64) return { ok: false, error: { code: 'image/no-data', message: '图片接口没有返回 b64_json。' } };
+    const dir = imageDirectory(payload.cwd);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, safeImageName(payload.filename));
+    writeFileSync(file, Buffer.from(b64, 'base64'));
+    const bytes = readFileSync(file).length;
+    if (bytes === 0) return { ok: false, error: { code: 'image/empty-file', message: '图片文件写入为空。' } };
+    return { ok: true, value: { path: file, bytes, model: payload.model } };
+  } catch (error) {
+    return { ok: false, error: { code: error?.name === 'AbortError' ? 'image/timeout' : 'image/request-failed', message: `图片生成请求失败：${error?.message || String(error)}` } };
+  } finally { clearTimeout(timer); }
+}
 
 /**
  * The record path.
@@ -176,13 +247,29 @@ function injectedMessage(text) {
   };
 }
 
+function selectedModelOf(agent) {
+  const provider = agent?.options?.provider ?? agent?.session?.header?.provider;
+  const model = agent?.options?.model ?? agent?.session?.header?.model;
+  return typeof provider === 'string' && provider.trim() && typeof model === 'string' && model.trim()
+    ? `${provider.trim()}/${model.trim()}`
+    : undefined;
+}
+
 function routingForAgent(agent, ctx) {
   const official = readOfficialModelSelection(ctx);
   if (!official) return undefined;
   const cwd = agent?.session?.header?.cwd;
   const configured = loadRoutingConfig(cwd, message => warn(ctx, message));
   const routing = compatibleRouting(official, configured);
-  return routingNotice(official, routing);
+  return { notice: routingNotice(official, routing), routing };
+}
+
+function logObservability(ctx, fields) {
+  try {
+    ctx?.logger?.info?.(`[dsh-model-gear] orchestration observable ${JSON.stringify(fields)}`);
+  } catch {
+    // Observability is strictly diagnostic and never changes orchestration behavior.
+  }
 }
 
 /** Read the session log without letting a host-side getter break the step. */
@@ -288,6 +375,14 @@ function createPreStepHandler(ctx, sessions) {
       }
 
       const mode = modeOf(sessions, sessionId);
+      const routeInfo = routingForAgent(agent, ctx);
+      const selectedModel = selectedModelOf(agent);
+      logObservability(ctx, {
+        session: sessionId,
+        mode,
+        route: routeInfo?.routing?.routes?.find(route => route.available)?.id,
+        selectedModel,
+      });
 
       if (mode === 'off') {
         // The contract stays in the log after the switch is turned off, so one retraction is owed
@@ -305,7 +400,7 @@ function createPreStepHandler(ctx, sessions) {
 
         // The official model-selection service owns enforcement. This optional advisory is read on
         // every parent step so a settings change is reflected without changing the old fallback.
-        const selection = routingForAgent(agent, ctx);
+        const selection = routeInfo?.notice;
         if (selection && needs(selection)) append(selection);
 
         // Steps 1..3 of every turn. The opening reminder alone was not enough in the upstream
@@ -355,6 +450,11 @@ function routeHandler(ctx, sessions, file) {
       }
       if (typeof payload.sessionId !== 'string' || payload.sessionId.length === 0 || payload.sessionId.length > 256) {
         return fail('orchestration/invalid-session', '会话参数无效。');
+      }
+
+      if (payload.action === 'generate-image') {
+        const result = await generateImage(ctx, payload);
+        return serverResponse(rpcId, result);
       }
 
       if (payload.action === 'read') {

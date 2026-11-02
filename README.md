@@ -83,7 +83,7 @@ dsh plugin --profile desktop remove dsh-model-gear
 
 ### 官方子代理模型选择兼容（`src/subagent-routing.js`）
 
-宿主存在 `subagentModelSelection` 服务且其同步 `current()` 返回 `enabled: true` 时，父会话每步会收到一条独立的 advisory：列出官方 `allowedModels` 精确 provider/model 路由，并明确真正约束由 `@deepseek-ai/dsh-tool-subagent`/宿主持有；本插件只提醒，不伪造强制。服务缺失、关闭、异常、异步 getter 或形状不匹配时不追加任何新消息，原有 fast/tree 行为保持不变。官方允许列表按 provider+model 去重；既有子会话策略仍由宿主冻结，本插件不写 projection、不创建子代理。
+宿主存在 `subagentModelSelection` 服务且其同步 `current()` 返回 `enabled: true` 时，父会话每步会收到一条独立的 advisory：分别列出官方允许模型（`available`）与项目路由推荐（`recommended`），并明确真正约束由 `@deepseek-ai/dsh-tool-subagent`/宿主持有；本插件只提醒，不伪造强制。当前已确认的官方接口只提供 `enabled` 与 `allowedModels`，未确认 cooldown/status 字段，因此插件不会从未知字段推断冷却；冷却状态仍以宿主/CPA 请求日志为准。服务缺失、关闭、异常、异步 getter 或形状不匹配时不追加任何新消息，原有 fast/tree 行为保持不变。官方允许列表按 provider+model 去重；既有子会话策略仍由宿主冻结，本插件不写 projection、不创建子代理。宿主日志会记录不含提示词/token 的 `session`、`mode`、匹配 `route` 和 `selectedModel` 字段。
 
 #### 配置项目路由
 

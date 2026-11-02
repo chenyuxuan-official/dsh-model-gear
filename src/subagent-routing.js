@@ -135,10 +135,14 @@ export function readOfficialModelSelection(ctx) {
 export function compatibleRouting(official, routing) {
   if (!official || !routing?.routes) return undefined;
   const allowed = new Set(official.routes.map(routeKey));
-  const routes = routing.routes.map(route => ({
-    ...route,
-    available: allowed.has(routeKey(route.target)),
-  }));
+  const routes = routing.routes.map(route => {
+    const key = routeKey(route.target);
+    return {
+      ...route,
+      available: allowed.has(key),
+      ...(!allowed.has(key) ? { availabilityReason: 'unavailable under the official allowlist' } : {}),
+    };
+  });
   return routes.length > 0 ? { version: 1, routes, file: routing.file } : undefined;
 }
 
@@ -157,14 +161,16 @@ export function routingNotice(official, routing) {
     'Source: official subagentModelSelection',
     'Enabled: true',
     'Enforcement: host/tool-subagent; this plugin only reminds and does not enforce.',
-    'If you explicitly set both provider and model for a child, use an exact allowed provider/model pair:',
-    ...(official.routes.length > 0 ? official.routes.map(route => `- ${route.provider}/${route.model}`) : ['- (none)']),
+    'Available official models (actual host selection surface):',
+    ...(official.routes.length > 0 ? official.routes.map(route => {
+      return `- ${route.provider}/${route.model}: available`;
+    }) : ['- (none)']),
   ];
   if (routing?.routes?.length) {
-    lines.push('Explicit dsh-model-gear routing assignments from the marked agents file; choose one only when its match fits the task:');
+    lines.push('Recommended dsh-model-gear routing assignments (advisory; choose one only when its match fits the task):');
     for (const route of routing.routes) {
-      const state = route.available ? 'available' : 'unavailable under the official allowlist';
-      lines.push(`- ${route.id} [${matchText(route.match)}] → ${route.target.provider}/${route.target.model}${route.effort ? ` (${route.effort})` : ''}: ${state}`);
+      const state = route.available ? 'available' : `unavailable${route.availabilityReason ? ` (${route.availabilityReason})` : ''}`;
+      lines.push(`- ${route.id} [${matchText(route.match)}] → ${route.target.provider}/${route.target.model}${route.effort ? ` (${route.effort})` : ''}: recommended; ${state}`);
     }
   }
   return lines.join('\n').slice(0, MAX_PROMPT_BYTES);
