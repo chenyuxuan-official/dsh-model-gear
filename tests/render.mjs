@@ -211,7 +211,7 @@ stateCursor = 0;
 stateOverrides[0] = true;
 stateOverrides[1] = 'effort';
 const gptFixTree = captured.component(props);
-assert.equal(elementsWithClass(gptFixTree, 'cg-model-fix-button').length, 1, 'a GPT row without ultra offers the repair button');
+assert.equal(elementsWithClass(gptFixTree, 'cg-model-fix-button').length, 1, 'a GPT row missing max offers the repair button');
 assert.match(textOf(gptFixTree), /还缺 max/, 'the diagnostic names the missing tier');
 // A row that already exposes its whole ladder is the negative case: three generic tiers are the
 // complete set for a model outside the GPT / DeepSeek / Kimi families.

@@ -11,10 +11,11 @@
 //   · a timestamped copy is written before the change, so a bad edit is restorable;
 //   · nothing is written unless the caller asked for `apply`.
 //
-// Why the validity check exists: `dsh-llm-pi-ai` validates `reasoningEfforts` with
-// `z.dict(..., z.union(THINKING_LEVELS))`, so a key outside that set is a *schema* error. In a deferred
-// read the whole provider is dropped with a diagnostic — every model of that provider disappears from
-// the picker, which looks nothing like "one tier is misspelled". A repair that only ever added keys
+// Why the validity check exists: `dsh-llm-pi-ai` validates the *selectable keys* of `reasoningEfforts`
+// with `z.dict(..., z.union(THINKING_LEVELS))`. The key must be a standard selector level, while the
+// value is an independent wire spelling: the official adapter documents `max: ultra` for a gateway
+// whose API calls that level Ultra. An unknown key (for example `ultra: ultra`) drops the whole provider
+// from the catalog, which looks nothing like one misspelled tier. A repair that only ever added keys
 // would therefore ship the bug it is supposed to fix, so removal is part of the plan.
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';

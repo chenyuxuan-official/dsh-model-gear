@@ -38,6 +38,8 @@ function normalizeEffortLevel(value, fallbackId) {
     : typeof value.value === 'string' && value.value.trim() ? value.value.trim()
       : typeof fallbackId === 'string' && fallbackId.trim() ? fallbackId.trim() : null;
   if (!id) return null;
+  // `id` is the wire/selectable id; a provider can additionally supply a human label. Preserve both,
+  // but do not turn a wire value such as `ultra` into a new selectable key.
   const name = typeof value.name === 'string' && value.name.trim() ? value.name.trim()
     : typeof value.label === 'string' && value.label.trim() ? value.label.trim()
       : typeof value.displayName === 'string' && value.displayName.trim() ? value.displayName.trim() : undefined;
@@ -62,15 +64,16 @@ function normalizeReasoningEfforts(reasoning) {
 function effortLabel(level) {
   if (level?.name) return level.name;
   const id = level?.id;
-  // Keep provider-specific ids literal: xhigh stays xhigh, max stays max, ultra stays ultra.
-  // A catalog-provided name/label wins; otherwise only the common generic tiers are capitalized.
+  // Display labels are cosmetic; selectable ids remain literal. Only generic ids are prettified.
+  // A provider-supplied label wins, so a gateway can expose selectable `max` as display `Ultra`.
   if (id === 'low' || id === 'medium' || id === 'high') return id[0].toUpperCase() + id.slice(1);
+  if (id === 'max') return 'Max';
   return id || 'Off';
 }
 
-// DSH's own tier vocabulary (`THINKING_LEVELS` in dsh-llm-pi-ai). A key outside it is a schema error
-// that drops the entire provider, not an extra level, which is why the ladder below never proposes
-// one — and why the repair can also *remove* a key a profile already carries.
+// DSH's selectable-key vocabulary (`THINKING_LEVELS` in dsh-llm-pi-ai). The key is not the wire
+// spelling: `max: ultra` is valid when the gateway's API calls its top level Ultra. Only an unknown key
+// drops the entire provider, so the repair removes illegal keys while preserving legal values.
 const KERNEL_TIERS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
 
 // Client-side mirror of the host's family ladder, used only to decide whether to offer a repair.

@@ -166,9 +166,16 @@ directory.select({ reasoningEffort: 原始档位 ID })
 off  minimal  low  medium  high  xhigh  max
 ```
 
-`ultra` 不在其中。把 `ultra: ultra` 写进 `reasoningEfforts` 不是“多一个档位”，而是 schema 错误：该 provider 整体加载失败，模型目录里这个 provider 的所有模型都会消失（选中过它的会话会显示“未提供推理强度设置”，插件日志里是 `llm-pi-ai: provider "cpa" ...`）。
+`ultra` 不是合法的**键**，但可以作为合法的**值**。正确区分是：
 
-最高可声明的等级是 `max`。CPA 侧同样只接受 `low / medium / high / xhigh / max`，`reasoning_effort: "ultra"` 会返回 `400 level "ultra" not supported`。
+```yaml
+# 键 = DSH 选择器显示的等级；值 = 发给网关的 wire spelling
+max: ultra
+```
+
+因此 `ultra: ultra` 会触发 schema 错误（该 provider 整体加载失败），而 `max: ultra` 是官方文档支持的映射：选择器显示 `Max`，请求发给网关的值是 `ultra`。截图里的 `Ultra` 说明当前选择器/插件把这个合法 wire 值直接作为了显示标签，属于 UI 展示问题，不代表 DSH 的 selectable key 是 `ultra`。
+
+CPA 当前这个路由实测只接受 `low / medium / high / xhigh / max` 作为请求值，所以本机 GPT 配置采用 `max: max`。如果某个上游明确要求 `ultra`，应配置 `max: ultra`，而不是增加 `ultra:` 键。
 
 GPT 模型想要顶层档位的正确写法：
 
@@ -206,6 +213,7 @@ reasoningEfforts:
 
 - 只在该模型自己的 `reasoningEfforts:` 块里增删档位行，一项一行；
 - 非法键（如 `ultra`）会被移除；不移除的话该 provider 永远进不了模型目录；
+- 修复只检查/调整键；合法的 wire 值（例如 `max: ultra`）会原样保留，不会误改成 `max: max`；
 - 提案只会使用 `off/minimal/low/medium/high/xhigh/max` 里的键，不会写回 `ultra`；
 - provider、API 地址、其他模型、其他字段逐字节保持不变；
 - `reasoningEfforts: false` 就地替换为真实档位块；模型没有该块时在条目末尾新建；
