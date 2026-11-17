@@ -83,7 +83,9 @@ function expectedLadder(modelId) {
   const id = String(modelId ?? '').toLowerCase();
   if (id.startsWith('gpt-image-')) return [];
   if (id.startsWith('gpt-') || id.startsWith('codex-')) return ['low', 'medium', 'high', 'xhigh', 'max'];
-  if (id.startsWith('deepseek') || id.startsWith('ds-')) return ['low', 'medium', 'high', 'max'];
+  // The official DeepSeek adapter exposes off/low/high/max; `medium` is not an official selectable
+  // level, so do not diagnose it as a missing profile tier.
+  if (id.startsWith('deepseek') || id.startsWith('ds-')) return ['low', 'high', 'max'];
   if (id.startsWith('kimi') || id.startsWith('moonshot')) return ['low', 'high', 'max'];
   return ['low', 'medium', 'high'];
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.4
+
+- 校正官方 DeepSeek 模型档位：`@deepseek-ai/dsh-llm-deepseek` 的 `reasoningEffort` 只接受 `off / low / high / max`，不再把 `medium` 当作 DeepSeek 官方档位或缺失档位。
+- DeepSeek 官方目录使用 `deepseek-flash`（显示名 `DeepSeek-V4.1-Flash`）；诊断建议不再因为官方模型缺少 profile 条目而误报需要补齐 `medium`。
+
 ## 1.3.3
 
 - 从模型强度面板移除「查看档位修复方案 / 写入 profile」UI 入口，避免 profile-not-found 或 provider/model ID 不一致时影响观感。
