@@ -211,8 +211,26 @@ stateCursor = 0;
 stateOverrides[0] = true;
 stateOverrides[1] = 'effort';
 const gptFixTree = captured.component(props);
-assert.equal(elementsWithClass(gptFixTree, 'cg-model-fix-button').length, 1, 'a GPT row missing max offers the repair button');
+assert.equal(elementsWithClass(gptFixTree, 'cg-model-fix-button').length, 0, 'profile repair affordance is removed from the UI');
 assert.match(textOf(gptFixTree), /还缺 max/, 'the diagnostic names the missing tier');
+snapshot.groups[0].models.push({ id: 'gpt-6.1-terra', name: 'GPT-6.1 Terra', reasoning: { defaultEffort: 'medium', efforts: [{ id: 'low' }, { id: 'medium' }, { id: 'high' }, { id: 'xhigh' }, { id: 'max' }] } });
+snapshot.current = { provider: 'deepseek-account', model: 'gpt-6.1-terra', reasoningEffort: 'max' };
+stateCursor = 0;
+stateOverrides[0] = true;
+stateOverrides[1] = 'effort';
+const gptUltraTree = captured.component(props);
+assert.match(textOf(gptUltraTree), /Ultra/, 'GPT max is displayed as Ultra');
+snapshot.current.reasoningEffort = 'medium';
+
+// A retained official/API model that is absent from the current catalog must explain the ID/provider
+// mismatch, not claim that its profile has no reasoning tiers.
+snapshot.current = { provider: 'deepseek-official', model: 'deepseek-flash', reasoningEffort: 'high' };
+stateCursor = 0;
+stateOverrides[0] = true;
+stateOverrides[1] = 'effort';
+const missingOfficialTree = captured.component(props);
+assert.match(textOf(missingOfficialTree), /provider「deepseek-official」/);
+assert.match(textOf(missingOfficialTree), /不是“官方 API 没有档位”/);
 // A row that already exposes its whole ladder is the negative case: three generic tiers are the
 // complete set for a model outside the GPT / DeepSeek / Kimi families.
 snapshot.groups[0].models.push({ id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', reasoning: { defaultEffort: 'high', efforts: [{ id: 'low' }, { id: 'medium' }, { id: 'high' }] } });

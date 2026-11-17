@@ -35,7 +35,8 @@ const VALID = new Set(THINKING_LEVELS);
 
 /**
  * The tiers each model family is normally configured with. Every entry is a legal key: a proposal may
- * never reintroduce a level the loader would reject.
+ * never reintroduce a level the loader would reject. Values already present are never rewritten, so a
+ * legal mapping such as `max: ultra` remains intact.
  */
 const FAMILIES = [
   { test: id => id.startsWith('gpt-image-'), tiers: [] },

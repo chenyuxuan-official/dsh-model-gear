@@ -190,6 +190,10 @@ reasoningEfforts:
 
 重启 DSH 后，模型目录会重新组合，插件读取并显示 `max`。插件本身不会给没有声明或上游不支持的模型虚构档位；这样 UI 中显示的值与实际提交给宿主的 `reasoningEffort` 保持一致。
 
+### 档位修复（宿主 API）
+
+档位修复按钮已从 UI 中移除，避免在当前会话的 provider/model ID 尚未完全对齐时影响面板观感。profile 修复模块与 host 路由仍保留，供维护和诊断测试使用；用户侧只显示档位诊断，不再显示“查看档位修复方案”入口。
+
 ### 一键修复档位（1.3.0 / 1.3.1）
 
 档位少于该系列常见配置时（例如 GPT 只暴露到 `xhigh`），强度面板底部会出现诊断和「查看档位修复方案」按钮：
@@ -203,6 +207,8 @@ reasoningEfforts:
 ```
 
 如果 profile 里已经写了非法键，预览会同时列出要移除的键：
+
+如果当前会话保留的是一个官方/API 模型 ID，但当前模型目录里没有该 `provider/model` 条目，诊断会明确显示 provider/model 不一致，不会把它误判成“官方模型没有档位”，也不会给不可定位的模型提供 profile 写入按钮。
 
 ```text
 将移除 gpt-6.1-sol 的非法档位键：ultra（DSH 只接受 off / minimal / low / medium / high / xhigh / max）

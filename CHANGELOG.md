@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.3
+
+- 从模型强度面板移除「查看档位修复方案 / 写入 profile」UI 入口，避免 profile-not-found 或 provider/model ID 不一致时影响观感。
+- 保留 host 侧 preview/apply 路由、文本修复模块和测试覆盖，供维护诊断使用；用户面板只保留档位诊断文本。
+
 ## 1.3.1
 
 - **修复 1.3.0 与 1.2.0 的导向错误**：`ultra` 不是 DSH 的合法档位键。`dsh-llm-pi-ai` 用 `z.dict(..., z.union(THINKING_LEVELS))` 校验，键只能是 `off/minimal/low/medium/high/xhigh/max`；写入 `ultra: ultra` 会让整个 provider 加载失败，模型目录里该 provider 的所有模型消失。插件与 README 不再建议写入 `ultra`，最高档位改为 `max`。
