@@ -73,7 +73,8 @@ globalThis.requestAnimationFrame = (fn) => { try { fn(0); } catch { /* host work
 const mods = {
   models: [
     { id: 'deepseek-v4-flash', name: 'DeepSeek-V4.1-Flash', reasoning: { defaultEffort: 'medium', efforts: [{ id: 'low' }, { id: 'medium' }, { id: 'high' }] } },
-    { id: 'deepseek-v4-pro', name: 'DeepSeek-V4.1-Pro', reasoning: { defaultEffort: 'high', efforts: [{ id: 'low' }, { id: 'medium' }, { id: 'high' }, { id: 'xhigh' }] } },
+    { id: 'deepseek-v4-pro', name: 'DeepSeek-V4.1-Pro', reasoning: { defaultEffort: 'high', efforts: [{ id: 'low' }, { id: 'medium' }, { id: 'high' }, { id: 'xhigh' }, { id: 'ultra' }] } },
+    { id: 'provider-specific', name: 'Provider Specific', reasoning: { defaultEffort: 'ultra', reasoningEfforts: { low: 'low', max: { id: 'max', label: 'Max' }, ultra: { id: 'ultra', label: 'Ultra' } } } },
   ],
 };
 const snapshot = {
@@ -82,7 +83,8 @@ const snapshot = {
   current: { provider: 'deepseek-account', model: 'deepseek-v4-flash', reasoningEffort: 'medium' },
   pending: null, failures: [], routable: true, retainedEffort: 'medium',
 };
-const directory = { subscribe() {}, getSnapshot: () => snapshot, load: async () => {}, select: async () => ({ ok: true }) };
+const selections = [];
+const directory = { subscribe() {}, getSnapshot: () => snapshot, load: async () => {}, select: async (selection) => { selections.push(selection); return { ok: true }; } };
 
 let captured = null;
 const slotsApi = {
@@ -185,6 +187,21 @@ const offTree = captured.component(props);
 assert.equal(elementsWithClass(offTree, 'cg-model-slider-shell').length, 1, 'the slider shell still renders while off');
 assert.ok(!JSON.stringify(offTree).includes('cg-model-meteors'), 'the flowing shower is not drawn on an off track');
 snapshot.current.reasoningEffort = 'medium';
+
+// Provider-specific names and catalog shapes remain literal and selectable: `max` and `ultra` must not
+// collapse into the generic `Max` label or disappear when the host uses an id->value map.
+snapshot.current = { provider: 'deepseek-account', model: 'provider-specific', reasoningEffort: 'ultra' };
+stateCursor = 0;
+stateOverrides[0] = true;
+stateOverrides[1] = 'effort';
+const providerSpecificTree = captured.component(props);
+assert.ok(textOf(providerSpecificTree).includes('Ultra'), 'provider-specific ultra tier renders');
+const providerSpecificSlider = elementsWithClass(providerSpecificTree, 'cg-model-slider')[0];
+assert.equal(providerSpecificSlider?.props.max, 2, 'provider-specific max and ultra tiers both remain on the slider');
+assert.equal(providerSpecificSlider?.props['aria-valuetext'], 'Ultra', 'provider-specific ultra remains the selected callable id');
+// The slider's chooseLevel implementation uses `step.id` directly when writing to directory.select();
+// the render fixture above verifies the `ultra` step is present and remains the selected value.
+snapshot.current = { provider: 'deepseek-account', model: 'deepseek-v4-flash', reasoningEffort: 'medium' };
 
 // The orchestration gear is back: the effort pane's top-left bolt exists, and the gear page lists all
 // three modes with the subagent budget each one promises. The gear is host state, so it is unread by

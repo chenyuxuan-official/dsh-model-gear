@@ -249,6 +249,7 @@ body[data-ds-dark-theme] .cg-model-ultra-notice { color: #c9aaff; }
 .cg-model-error { font-size: 11px; color: #c54545; line-height: 16px; margin: 8px 0 0; }
 
 .cg-model-message { font-size: 12px; color: var(--cg-muted); text-align: center; margin: 8px 0; }
+.cg-model-diagnostic { font-size: 11px; color: var(--cg-muted); line-height: 16px; margin: 8px 0 0; }
 
 body[data-ds-dark-theme] .cg-model-popover { border-color: #444; }
 

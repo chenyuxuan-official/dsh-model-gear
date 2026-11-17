@@ -22,6 +22,62 @@ import { ALIASES_KEY, readAliases } from './alias-sync.js';
 // providers.js, and `ALIASES_KEY` / `readAliases` from alias-sync.js: the build concatenates those
 // modules into the same factory body *before* this one, which is why they are free symbols.
 
+// Model catalogs have changed shape across DSH/CPA releases: some expose an array of `{ id, name }`,
+// others expose an id->id map, an array of strings, or the older `levels`/`reasoningEfforts` field.
+// Normalize only the transport shape; never invent or rename a tier. The returned id is exactly what
+// `directory.select()` receives, so a provider's `max`, `xhigh`, `ultra`, or any future id remains callable.
+function normalizeEffortLevel(value, fallbackId) {
+  if (typeof value === 'string') {
+    const id = value.trim();
+    return id ? { id, name: undefined } : null;
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return fallbackId ? { id: String(fallbackId), name: undefined } : null;
+  }
+  const id = typeof value.id === 'string' && value.id.trim() ? value.id.trim()
+    : typeof value.value === 'string' && value.value.trim() ? value.value.trim()
+      : typeof fallbackId === 'string' && fallbackId.trim() ? fallbackId.trim() : null;
+  if (!id) return null;
+  const name = typeof value.name === 'string' && value.name.trim() ? value.name.trim()
+    : typeof value.label === 'string' && value.label.trim() ? value.label.trim()
+      : typeof value.displayName === 'string' && value.displayName.trim() ? value.displayName.trim() : undefined;
+  return name ? { ...value, id, name } : { ...value, id };
+}
+
+function normalizeReasoningEfforts(reasoning) {
+  const source = reasoning?.efforts ?? reasoning?.levels ?? reasoning?.reasoningEfforts;
+  const entries = Array.isArray(source) ? source.map(value => [undefined, value])
+    : source && typeof source === 'object' ? Object.entries(source) : [];
+  const result = [];
+  const seen = new Set();
+  for (const [key, value] of entries) {
+    const level = normalizeEffortLevel(value, key);
+    if (!level || seen.has(level.id)) continue;
+    seen.add(level.id);
+    result.push(level);
+  }
+  return result;
+}
+
+function effortLabel(level) {
+  if (level?.name) return level.name;
+  const id = level?.id;
+  // Keep provider-specific ids literal: xhigh stays xhigh, max stays max, ultra stays ultra.
+  // A catalog-provided name/label wins; otherwise only the common generic tiers are capitalized.
+  if (id === 'low' || id === 'medium' || id === 'high') return id[0].toUpperCase() + id.slice(1);
+  return id || 'Off';
+}
+
+function effortDiagnostic(model, steps) {
+  const ids = steps.map(step => step.id);
+  const exposed = ids.length ? ids.join('、') : '无';
+  const modelId = String(model?.id || '').toLowerCase();
+  const gptLike = modelId.startsWith('gpt-') || modelId.startsWith('codex-');
+  if (!steps.length) return `档位诊断：当前 profile 未向 DSH 暴露推理档位（模型 ${model?.id || '未知'}）。修改 profile 后重启 DSH。`;
+  if (gptLike && !ids.includes('ultra')) return `档位诊断：当前 profile 已暴露 ${exposed}；如上游支持 Ultra，请在该模型的 reasoningEfforts 中加入 ultra: ultra，保存并重启 DSH。`;
+  return `档位诊断：当前 profile 已暴露 ${exposed}；选择后将按原始 ID 调用宿主。`;
+}
+
 // One registration per context: the slot below is single-kind, and a second register throws from inside
 // the fiber, where the failure reads as a vanished panel rather than a double mount.
 //
@@ -38,10 +94,6 @@ const RECENT_MODELS = 'dsh-model-gear/recent-models';
 const RECENT_LIMIT = 5;
 
 function registerModelUI(ctx) {
-  // Tier labels follow the model menu's own convention: an English word, a capital and the rest lower
-  // case — Off / Low / Medium / High / Max. A model that advertises its own name for a level keeps it.
-  const effortNames = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Max', max: 'Max', ultra: 'Ultra', off: 'Off' };
-  const effortLabel = level => effortNames[level?.id] || level?.name || level?.id || 'Off';
   const glyph = (kind, className) => h('svg', {
     className, width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
     strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true
@@ -247,9 +299,9 @@ function registerModelUI(ctx) {
     const choices = state.groups.flatMap(group => group.models.map(model => ({ group, model })));
     const chosen = choices.find(choice => choice.group.id === state.current?.provider && choice.model.id === state.current?.model);
     const reasoning = chosen?.model.reasoning;
-    // The levels are the host's own list, in the host's order. No virtual tier is appended: a level the
-    // model does not advertise is not a level this panel may claim.
-    const steps = reasoning?.efforts || [];
+    // The levels are the host's own list, in the host's order. Accept known catalog shapes, but never
+    // append a virtual tier: a level the model does not advertise is not a level this panel may claim.
+    const steps = normalizeReasoningEfforts(reasoning);
     const maxIndex = Math.max(0, steps.length - 1);
     const effectiveValue = state.current?.reasoningEffort ?? reasoning?.defaultEffort;
     const effectiveIndex = steps.findIndex(step => step.id === effectiveValue);
@@ -817,7 +869,8 @@ function registerModelUI(ctx) {
           disabled: busy || !reasoning || !state.current, onClick: reset
         }, [glyph('reset'), h('span', { className: 'cg-model-tooltip', role: 'tooltip' }, ['重置为默认'])])
       ]),
-      steps.length > 0 ? shell : h('p', { className: 'cg-model-message' }, ['当前模型未提供推理强度设置。'])
+      steps.length > 0 ? shell : h('p', { className: 'cg-model-message' }, ['当前模型未提供推理强度设置。']),
+      h('p', { className: 'cg-model-diagnostic', role: 'status' }, [effortDiagnostic(chosen?.model, steps)])
     ]);
 
     // One row per gear, each spelling out how many subagents the host will start, so the choice is a

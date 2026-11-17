@@ -142,6 +142,35 @@ tests/                       五个 Node 测试，见下
 docs/subagent-depth.md       子代理深度：让「超快」长出第二层（宿主侧配置）
 ```
 
+## 模型档位与 profile 配置
+
+模型强度不在插件内硬编码。插件读取 DSH 当前 profile 组合后的模型目录，并使用模型自身暴露的档位：
+
+```text
+profile/CPA reasoningEfforts
+        ↓
+DSH model directory
+        ↓
+dsh-model-gear UI
+        ↓
+directory.select({ reasoningEffort: 原始档位 ID })
+```
+
+因此不同用户安装同一个插件时，会显示各自 profile 实际提供的档位。`max`、`xhigh`、`ultra` 和未来新增 ID 都保持原值，不会互相映射。插件兼容 `reasoning.efforts`、`reasoning.levels` 和 `reasoning.reasoningEfforts` 三种目录形状。
+
+如果要让某个用户的 GPT 模型出现 Ultra，需要在该用户的 profile/CPA 模型配置中声明：
+
+```yaml
+reasoningEfforts:
+  low: low
+  medium: medium
+  high: high
+  xhigh: xhigh
+  ultra: ultra
+```
+
+重启 DSH 后，模型目录会重新组合，插件再读取并显示 Ultra。插件本身不会给没有声明或上游不支持的模型虚构档位；这样 UI 中显示的值与实际提交给宿主的 `reasoningEffort` 保持一致。
+
 ## 开发
 
 ```sh

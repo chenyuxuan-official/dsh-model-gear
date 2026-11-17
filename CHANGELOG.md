@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- 模型档位改为完全跟随当前 DSH profile 的 model directory：保留 `max`、`xhigh`、`ultra` 等真实 ID，并兼容 `reasoning.efforts`、`levels` 与 `reasoningEfforts` 数据形状。
+- 模型强度面板新增“档位诊断”会话内 UI 提示：说明当前 profile 实际暴露的档位，并在 GPT/Codex 未暴露 `ultra` 时给出 profile 配置与重启提示；该提示不会注入 agent 会话文本。
+
 ## 1.1.0
 
 - 新增官方 `subagentModelSelection` 兼容：读取官方允许的 `provider/model` 路由，并在父会话中给出 advisory；真正的子代理创建和模型约束仍由宿主工具负责。
