@@ -240,6 +240,7 @@ stateOverrides[0] = true;
 stateOverrides[1] = 'effort';
 const noFixTree = captured.component(props);
 assert.equal(elementsWithClass(noFixTree, 'cg-model-fix-button').length, 0, 'a complete row shows no repair offer');
+assert.equal(elementsWithClass(noFixTree, 'cg-model-diagnostic').length, 0, 'a healthy row hides the diagnostic');
 snapshot.current = { provider: 'deepseek-account', model: 'deepseek-v4-flash', reasoningEffort: 'medium' };
 
 // The orchestration gear is back: the effort pane's top-left bolt exists, and the gear page lists all
