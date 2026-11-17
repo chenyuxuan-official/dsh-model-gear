@@ -203,6 +203,23 @@ assert.equal(providerSpecificSlider?.props['aria-valuetext'], 'Ultra', 'provider
 // the render fixture above verifies the `ultra` step is present and remains the selected value.
 snapshot.current = { provider: 'deepseek-account', model: 'deepseek-v4-flash', reasoningEffort: 'medium' };
 
+// A GPT model whose catalog row stops at `xhigh` is the one case the panel can name a concrete fix
+// for, so the repair affordance must exist exactly there.
+snapshot.groups[0].models.push({ id: 'gpt-6.1-sol', name: 'GPT-6.1 Sol', reasoning: { defaultEffort: 'medium', efforts: [{ id: 'low' }, { id: 'medium' }, { id: 'high' }, { id: 'xhigh' }] } });
+snapshot.current = { provider: 'deepseek-account', model: 'gpt-6.1-sol', reasoningEffort: 'medium' };
+stateCursor = 0;
+stateOverrides[0] = true;
+stateOverrides[1] = 'effort';
+const gptFixTree = captured.component(props);
+assert.equal(elementsWithClass(gptFixTree, 'cg-model-fix-button').length, 1, 'a GPT row without ultra offers the repair button');
+assert.match(textOf(gptFixTree), /缺少 ultra/, 'the diagnostic names the missing tier');
+snapshot.current = { provider: 'deepseek-account', model: 'deepseek-v4-flash', reasoningEffort: 'medium' };
+stateCursor = 0;
+stateOverrides[0] = true;
+stateOverrides[1] = 'effort';
+const noFixTree = captured.component(props);
+assert.equal(elementsWithClass(noFixTree, 'cg-model-fix-button').length, 0, 'a complete row shows no repair offer');
+
 // The orchestration gear is back: the effort pane's top-left bolt exists, and the gear page lists all
 // three modes with the subagent budget each one promises. The gear is host state, so it is unread by
 // default (`null`); hook position 2 is the state slot the tests script.

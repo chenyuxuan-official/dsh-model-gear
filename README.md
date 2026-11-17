@@ -171,11 +171,34 @@ reasoningEfforts:
 
 重启 DSH 后，模型目录会重新组合，插件再读取并显示 Ultra。插件本身不会给没有声明或上游不支持的模型虚构档位；这样 UI 中显示的值与实际提交给宿主的 `reasoningEffort` 保持一致。
 
+### 一键修复档位（1.3.0）
+
+档位少于该系列常见配置时（例如 GPT 只暴露到 `xhigh`），强度面板底部会出现诊断和「查看档位修复方案」按钮：
+
+```text
+档位诊断：当前 profile 已暴露 low、medium、high、xhigh；缺少 ultra 时可一键补齐，然后重启 DSH。
+[查看档位修复方案]
+  → 将向 C:\Users\<用户>\.dsh\profiles\desktop\cordis.patch.yml 的 gpt-6.1-sol 追加：ultra
+  [写入 profile] [取消]
+  → 已写入 …，重启 DSH 后生效。备份：…cordis.patch.yml.bak-2026-11-17T09-30-00-000Z
+```
+
+写入规则：
+
+- 只在该模型自己的 `reasoningEfforts:` 块里追加缺失档位，一项一行；
+- provider、API 地址、其他模型、其他字段逐字节保持不变；
+- `reasoningEfforts: false` 就地替换为真实档位块；模型没有该块时在条目末尾新建；
+- 写入前 `copyFileSync` 到带时间戳的 `.bak-*`，备份失败则整次写入放弃；
+- 没有要补的档位时报告「无需写入」，不产生备份；
+- 目标是本机 profile 的 `cordis.patch.yml`，写入后需要重启 DSH 才会进入模型目录。
+
+修复模块是 `src/profile-efforts.js`，只做文本增量编辑，不引入 YAML 依赖，也不会重排用户文件。
+
 ## 开发
 
 ```sh
 node scripts/build.mjs     # src/* → lib/client.js
-npm test                   # 运行全部五个测试
+npm test                   # 运行全部六个测试
 npm run check              # 构建并确认提交的 lib/ 与源码一致
 ```
 
@@ -198,6 +221,7 @@ npm test
 | `tests/render.mjs` | 渲染树：模型、默认组、光带与 `--cg-fill-width`、闪电按钮、三档菜单、未同步分支 |
 | `tests/host.mjs` | 假宿主：路由读写、持久化、契约与提醒注入、去重、关闭提示、子会话分层、官方模型选择 advisory |
 | `tests/routing.mjs` | 显式 agents 路由标记/schema、官方 allowlist 归一化与 advisory 回退 |
+| `tests/efforts.mjs` | 档位修复：预览不写入、追加行、备份、幂等、`false` 分支、缺块新建、错误码 |
 | `tests/style-owner.mjs` | 两个实例装进同一页面时，旧实例不能再改写样式表 |
 
 边改边看时可以把 profile 指回本地目录：

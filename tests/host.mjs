@@ -4,7 +4,7 @@
 // listener that `apply(ctx)` registers, then drives both with the exact envelopes and payloads the
 // real host uses. No DSH installation, browser or built artifact is involved.
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -290,7 +290,36 @@ try {
   assert.equal(ordinaryImage.result.error.code, 'image/invalid-model');
   assert.match(ordinaryImage.result.error.message, /gpt-image/);
 
-  console.log('host ok: route, persistence, fast/tree injection, dedupe, off notice, child note, image-model gate');
+  // 10. Effort repair rides the same route and payload envelope: preview writes nothing, apply writes
+  // one tier line into a throwaway profile patch and answers with the backup path.
+  const profileFile = join(home, 'cordis.patch.yml');
+  writeFileSync(profileFile, `- id: llm-pi-ai
+  config:
+    providers:
+      cpa:
+        models:
+          - id: gpt-6.1-sol
+            name: GPT-6.1 Sol
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+`, 'utf8');
+  const previewBody = await post(route, { action: 'efforts-preview', sessionId: 'session-fast', modelId: 'gpt-6.1-sol', file: profileFile });
+  assert.equal(previewBody.result.ok, true, 'the route answers the preview');
+  assert.deepEqual(previewBody.result.value.add, ['ultra'], 'the route proposes the missing tier');
+  assert.equal(readFileSync(profileFile, 'utf8').includes('ultra: ultra'), false, 'the preview did not write');
+  const applyBody = await post(route, { action: 'efforts-apply', sessionId: 'session-fast', modelId: 'gpt-6.1-sol', file: profileFile });
+  assert.equal(applyBody.result.ok, true, 'the route answers the apply');
+  assert.equal(applyBody.result.value.written, true);
+  assert.ok(existsSync(applyBody.result.value.backup), 'the backup path in the answer exists');
+  assert.ok(readFileSync(profileFile, 'utf8').includes('              ultra: ultra'), 'the tier reached the file');
+  const badEffort = await post(route, { action: 'efforts-preview', sessionId: 'session-fast', modelId: 'no-such-model', file: profileFile });
+  assert.equal(badEffort.result.ok, false, 'an unknown model is a failure envelope, not a silent no-op');
+  assert.deepEqual(badEffort.result.error.details !== undefined, true, 'effort failures carry details too');
+
+  console.log('host ok: route, persistence, fast/tree injection, dedupe, off notice, child note, image-model gate, effort repair');
 } finally {
   if (originalHome === undefined) delete process.env.DSH_HOME;
   else process.env.DSH_HOME = originalHome;

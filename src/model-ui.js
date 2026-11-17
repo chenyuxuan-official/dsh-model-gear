@@ -68,13 +68,19 @@ function effortLabel(level) {
   return id || 'Off';
 }
 
-function effortDiagnostic(model, steps) {
+// The diagnostic names the model the reader actually has selected, even when the catalog has no row
+// for it. `catalog` matters: an empty tier list while the catalog is still loading is not the same
+// finding as an empty tier list on a loaded catalog, and only the second one is a profile problem.
+function effortDiagnostic({ modelId, steps, catalog }) {
   const ids = steps.map(step => step.id);
   const exposed = ids.length ? ids.join('、') : '无';
-  const modelId = String(model?.id || '').toLowerCase();
-  const gptLike = modelId.startsWith('gpt-') || modelId.startsWith('codex-');
-  if (!steps.length) return `档位诊断：当前 profile 未向 DSH 暴露推理档位（模型 ${model?.id || '未知'}）。修改 profile 后重启 DSH。`;
-  if (gptLike && !ids.includes('ultra')) return `档位诊断：当前 profile 已暴露 ${exposed}；如上游支持 Ultra，请在该模型的 reasoningEfforts 中加入 ultra: ultra，保存并重启 DSH。`;
+  if (!steps.length) {
+    if (catalog !== 'ready') return `档位诊断：模型目录${catalog === 'error' ? '加载失败' : '仍在加载'}，暂时读不到 ${modelId} 的档位；稍后重新打开本面板，或检查 provider 是否可达。`;
+    return `档位诊断：当前 profile 未向 DSH 暴露 ${modelId} 的推理档位。可在下方查看并写入建议配置，然后重启 DSH。`;
+  }
+  const lower = String(modelId).toLowerCase();
+  const gptLike = lower.startsWith('gpt-') || lower.startsWith('codex-');
+  if (gptLike && !ids.includes('ultra')) return `档位诊断：当前 profile 已暴露 ${exposed}；缺少 ultra 时可一键补齐，然后重启 DSH。`;
   return `档位诊断：当前 profile 已暴露 ${exposed}；选择后将按原始 ID 调用宿主。`;
 }
 
@@ -140,6 +146,16 @@ function registerModelUI(ctx) {
     if (typeof rpc?.call !== 'function') throw new Error('未连接宿主，无法读取编排档位。');
     const result = await rpc.call('/api', 'dsh-model-gear/orchestration', payload);
     if (result?.ok === false) throw new Error(result.error?.message || '编排档位写入失败。');
+    return result?.value ?? result ?? {};
+  }
+
+  // Effort repair talks to the same route; the host answers with `{ ok, value | error }`, and the
+  // caller decides what to render. `preview` writes nothing on disk.
+  async function effortsRequest(payload) {
+    const rpc = connection()?.rpc;
+    if (typeof rpc?.call !== 'function') throw new Error('未连接宿主，无法读取档位方案。');
+    const result = await rpc.call('/api', 'dsh-model-gear/orchestration', payload);
+    if (result?.ok === false) throw new Error(result.error?.message || '档位方案读取失败。');
     return result?.value ?? result ?? {};
   }
 
@@ -232,7 +248,7 @@ function registerModelUI(ctx) {
     }
   }
 
-  function ModelControl({ locked, available, directory, load, select, sessionId, image: imageApi, gear: gearApi }) {
+  function ModelControl({ locked, available, directory, load, select, sessionId, image: imageApi, gear: gearApi, efforts: effortsApi }) {
     const subscribe = React.useCallback(listener => directory.subscribe(listener), [directory]);
     const snapshot = React.useCallback(() => directory.getSnapshot(), [directory]);
     const state = React.useSyncExternalStore(subscribe, snapshot);
@@ -248,6 +264,10 @@ function registerModelUI(ctx) {
     const [imageSize, setImageSize] = React.useState('1024x1024');
     const [imageBusy, setImageBusy] = React.useState(false);
     const [imageResult, setImageResult] = React.useState(null);
+    // Effort repair: `null` until asked, then the preview, then the applied result. Kept in one object
+    // so a failed apply can carry its message without a second piece of state.
+    const [effortFix, setEffortFix] = React.useState(null);
+    const [effortFixBusy, setEffortFixBusy] = React.useState(false);
     const rootRef = React.useRef(null);
     const triggerRef = React.useRef(null);
     const popupRef = React.useRef(null);
@@ -297,7 +317,12 @@ function registerModelUI(ctx) {
     }, [aliasEditor]);
 
     const choices = state.groups.flatMap(group => group.models.map(model => ({ group, model })));
-    const chosen = choices.find(choice => choice.group.id === state.current?.provider && choice.model.id === state.current?.model);
+    // Provider first, then the bare id: a session can retain a selection whose provider id changed
+    // under it (profile renamed, provider re-registered). Falling back to the id keeps the tier list
+    // and the model name attached to the same model instead of showing an empty panel for a model
+    // that is plainly listed.
+    const chosen = choices.find(choice => choice.group.id === state.current?.provider && choice.model.id === state.current?.model)
+      ?? choices.find(choice => choice.model.id === state.current?.model);
     const reasoning = chosen?.model.reasoning;
     // The levels are the host's own list, in the host's order. Accept known catalog shapes, but never
     // append a virtual tier: a level the model does not advertise is not a level this panel may claim.
@@ -844,6 +869,76 @@ function registerModelUI(ctx) {
       actionError ? h('p', { className: 'cg-model-error', role: 'alert' }, [actionError]) : null,
     ]);
 
+    // ---------------------------------------------------------------- effort repair
+    // The panel can only report what the catalog exposes, so a model whose family supports more tiers
+    // than its profile declares looks identical to a model that has no tiers at all. The repair flow
+    // separates those: it names the selected model even when the catalog has no row for it, and it
+    // offers a profile edit that the reader confirms — preview first, write second, restart third.
+    const currentModelId = chosen?.model.id ?? state.current?.model ?? null;
+    const lowerModelId = String(currentModelId ?? '').toLowerCase();
+    const gptLikeModel = lowerModelId.startsWith('gpt-') || lowerModelId.startsWith('codex-');
+    const exposesUltra = steps.some(step => step.id === 'ultra');
+    const diagnosticText = effortDiagnostic({ modelId: currentModelId ?? '未选择模型', steps, catalog: state.status });
+    const diagnosticOffersFix = Boolean(currentModelId) && state.status === 'ready' && (steps.length === 0 || (gptLikeModel && !exposesUltra));
+
+    const previewFix = async () => {
+      if (!currentModelId || effortFixBusy) return;
+      setEffortFixBusy(true);
+      setActionError(null);
+      setEffortFix(null);
+      try {
+        const value = await (typeof effortsApi?.preview === 'function'
+          ? effortsApi.preview({ sessionId, modelId: currentModelId })
+          : effortsRequest({ action: 'efforts-preview', sessionId, modelId: currentModelId }));
+        setEffortFix({ stage: 'preview', value });
+      } catch (error) {
+        setEffortFix({ stage: 'error', message: error?.message || String(error) });
+      } finally { setEffortFixBusy(false); }
+    };
+
+    const applyFix = async () => {
+      if (!currentModelId || effortFixBusy) return;
+      setEffortFixBusy(true);
+      setActionError(null);
+      try {
+        const value = await (typeof effortsApi?.apply === 'function'
+          ? effortsApi.apply({ sessionId, modelId: currentModelId })
+          : effortsRequest({ action: 'efforts-apply', sessionId, modelId: currentModelId }));
+        setEffortFix({ stage: 'applied', value });
+      } catch (error) {
+        setEffortFix({ stage: 'error', message: error?.message || String(error) });
+      } finally { setEffortFixBusy(false); }
+    };
+
+    const effortFixValue = effortFix?.value;
+    const effortFixPane = h('div', { className: 'cg-model-fix' }, [
+      effortFix == null
+        ? h('button', { className: 'cg-model-fix-button', type: 'button', disabled: effortFixBusy || busy, onClick: previewFix }, [effortFixBusy ? '读取中…' : '查看档位修复方案'])
+        : null,
+      effortFix?.stage === 'preview'
+        ? h('div', null, [
+          effortFixValue?.add?.length
+            ? h('p', { className: 'cg-model-fix-text' }, [`将向 ${effortFixValue.file} 的 ${currentModelId} 追加：${effortFixValue.add.join('、')}`])
+            : h('p', { className: 'cg-model-fix-text' }, ['该模型已声明全部建议档位，无需写入。']),
+          effortFixValue?.add?.length
+            ? h('div', { className: 'cg-model-fix-actions' }, [
+              h('button', { className: 'cg-model-fix-button', type: 'button', disabled: effortFixBusy, onClick: applyFix }, [effortFixBusy ? '写入中…' : '写入 profile']),
+              h('button', { className: 'cg-model-fix-cancel', type: 'button', disabled: effortFixBusy, onClick: () => setEffortFix(null) }, ['取消'])
+            ])
+            : null
+        ])
+        : null,
+      effortFix?.stage === 'applied'
+        ? h('div', null, [
+          h('p', { className: 'cg-model-fix-text' }, [effortFixValue?.written ? `已写入 ${effortFixValue.file}，重启 DSH 后生效。备份：${effortFixValue.backup}` : '没有需要写入的档位。']),
+          h('button', { className: 'cg-model-fix-cancel', type: 'button', onClick: () => setEffortFix(null) }, ['知道了'])
+        ])
+        : null,
+      effortFix?.stage === 'error'
+        ? h('p', { className: 'cg-model-error', role: 'alert' }, [effortFix.message])
+        : null
+    ]);
+
     const effortPane = h('div', { className: 'cg-model-pane', key: 'effort' }, [
       h('div', { className: 'cg-model-top' }, [
         // Top-left bolt: opens the gear page. `data-mode` stays `unknown` until the host answers, so
@@ -870,7 +965,8 @@ function registerModelUI(ctx) {
         }, [glyph('reset'), h('span', { className: 'cg-model-tooltip', role: 'tooltip' }, ['重置为默认'])])
       ]),
       steps.length > 0 ? shell : h('p', { className: 'cg-model-message' }, ['当前模型未提供推理强度设置。']),
-      h('p', { className: 'cg-model-diagnostic', role: 'status' }, [effortDiagnostic(chosen?.model, steps)])
+      h('p', { className: 'cg-model-diagnostic', role: 'status' }, [diagnosticText]),
+      diagnosticOffersFix ? effortFixPane : null
     ]);
 
     // One row per gear, each spelling out how many subagents the host will start, so the choice is a
@@ -947,6 +1043,12 @@ function registerModelUI(ctx) {
             load: () => { if (available) directory.load().catch(() => {}); },
             select: selection => (available ? directory.select(selection) : Promise.resolve(undefined)),
             image: { generate: payload => imageRequest(payload) },
+            // Effort repair keeps the same contract as the image call: the component asks, the host
+            // decides, and a failure arrives as a thrown message the panel prints as-is.
+            efforts: {
+              preview: payload => effortsRequest({ ...payload, action: 'efforts-preview' }),
+              apply: payload => effortsRequest({ ...payload, action: 'efforts-apply' })
+            },
             // The gear goes through the host route only. Keeping the calls in the injected props means
             // the component never has to know how the Connection carrier is obtained.
             gear: {

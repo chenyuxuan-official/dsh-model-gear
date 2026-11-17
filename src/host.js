@@ -22,6 +22,7 @@ import {
   fastNudge,
   treeNudge,
 } from './orchestration-policy.js';
+import { applyEfforts, previewEfforts } from './profile-efforts.js';
 import {
   compatibleRouting,
   loadRoutingConfig,
@@ -459,6 +460,17 @@ function routeHandler(ctx, sessions, file) {
 
       if (payload.action === 'read') {
         return serverResponse(rpcId, { ok: true, value: { mode: modeOf(sessions, payload.sessionId) } });
+      }
+
+      // Effort repair is a profile-file operation, so it reuses this route instead of adding a second
+      // one: the panel already has a carrier, and a separate route would need its own registration
+      // failure path for no gain. `preview` writes nothing; only `apply` does, after a backup.
+      if (payload.action === 'efforts-preview') {
+        return serverResponse(rpcId, previewEfforts({ modelId: payload.modelId, file: payload.file }));
+      }
+
+      if (payload.action === 'efforts-apply') {
+        return serverResponse(rpcId, applyEfforts({ modelId: payload.modelId, file: payload.file }));
       }
 
       if (payload.action === 'update') {

@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.3.0
+
+- **一键修复档位**：模型目录暴露的档位少于该模型系列常见配置时（例如 GPT 只有 `low/medium/high/xhigh`），强度面板会给出「查看档位修复方案」按钮。方案先预览（文件、要追加的档位），确认后才写入 profile 的 `cordis.patch.yml`，写入前生成带时间戳的备份，并提示重启 DSH 生效。
+- 修复范围严格限定在该模型自己的 `reasoningEfforts:` 块：只追加缺失的档位行，provider、API 地址、其他模型与其他字段逐字节保持不变；`reasoningEfforts: false` 会就地被替换成真实档位块；没有该块时在模型条目末尾新建。
+- 新增 `src/profile-efforts.js`（纯文本增量编辑，无 YAML 依赖）与 `tests/efforts.mjs`（预览、写入、备份、幂等、false 分支、缺块、错误码）。
+- **档位诊断改为带上下文的会话内提示**：明确区分「模型目录仍在加载/加载失败」与「profile 未暴露档位」；即使目录里没有当前模型条目，也会显示当前选中的模型 ID，不再出现「模型 未知」。
+- 当前模型查找增加「仅按模型 ID」回退：provider 标识变更（rename/重新注册）后仍能读到该模型的档位列表，而不是显示空面板。
+
+## 1.2.0
 
 - 模型档位改为完全跟随当前 DSH profile 的 model directory：保留 `max`、`xhigh`、`ultra` 等真实 ID，并兼容 `reasoning.efforts`、`levels` 与 `reasoningEfforts` 数据形状。
 - 模型强度面板新增“档位诊断”会话内 UI 提示：说明当前 profile 实际暴露的档位，并在 GPT/Codex 未暴露 `ultra` 时给出 profile 配置与重启提示；该提示不会注入 agent 会话文本。
