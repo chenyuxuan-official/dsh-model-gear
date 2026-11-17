@@ -156,9 +156,21 @@ dsh-model-gear UI
 directory.select({ reasoningEffort: 原始档位 ID })
 ```
 
-因此不同用户安装同一个插件时，会显示各自 profile 实际提供的档位。`max`、`xhigh`、`ultra` 和未来新增 ID 都保持原值，不会互相映射。插件兼容 `reasoning.efforts`、`reasoning.levels` 和 `reasoning.reasoningEfforts` 三种目录形状。
+因此不同用户安装同一个插件时，会显示各自 profile 实际提供的档位。`max`、`xhigh` 和未来新增 ID 都保持原值，不会互相映射。插件兼容 `reasoning.efforts`、`reasoning.levels` 和 `reasoning.reasoningEfforts` 三种目录形状。
 
-如果要让某个用户的 GPT 模型出现 Ultra，需要在该用户的 profile/CPA 模型配置中声明：
+### 合法档位集合（重要）
+
+`dsh-llm-pi-ai` 用 `z.dict(..., z.union(THINKING_LEVELS))` 校验 `reasoningEfforts`，**键**只能是：
+
+```text
+off  minimal  low  medium  high  xhigh  max
+```
+
+`ultra` 不在其中。把 `ultra: ultra` 写进 `reasoningEfforts` 不是“多一个档位”，而是 schema 错误：该 provider 整体加载失败，模型目录里这个 provider 的所有模型都会消失（选中过它的会话会显示“未提供推理强度设置”，插件日志里是 `llm-pi-ai: provider "cpa" ...`）。
+
+最高可声明的等级是 `max`。CPA 侧同样只接受 `low / medium / high / xhigh / max`，`reasoning_effort: "ultra"` 会返回 `400 level "ultra" not supported`。
+
+GPT 模型想要顶层档位的正确写法：
 
 ```yaml
 reasoningEfforts:
@@ -166,26 +178,35 @@ reasoningEfforts:
   medium: medium
   high: high
   xhigh: xhigh
-  ultra: ultra
+  max: max
 ```
 
-重启 DSH 后，模型目录会重新组合，插件再读取并显示 Ultra。插件本身不会给没有声明或上游不支持的模型虚构档位；这样 UI 中显示的值与实际提交给宿主的 `reasoningEffort` 保持一致。
+重启 DSH 后，模型目录会重新组合，插件读取并显示 `max`。插件本身不会给没有声明或上游不支持的模型虚构档位；这样 UI 中显示的值与实际提交给宿主的 `reasoningEffort` 保持一致。
 
-### 一键修复档位（1.3.0）
+### 一键修复档位（1.3.0 / 1.3.1）
 
 档位少于该系列常见配置时（例如 GPT 只暴露到 `xhigh`），强度面板底部会出现诊断和「查看档位修复方案」按钮：
 
 ```text
-档位诊断：当前 profile 已暴露 low、medium、high、xhigh；缺少 ultra 时可一键补齐，然后重启 DSH。
+档位诊断：当前 profile 已暴露 low、medium、high、xhigh；还缺 max，可一键补齐后重启 DSH。
 [查看档位修复方案]
-  → 将向 C:\Users\<用户>\.dsh\profiles\desktop\cordis.patch.yml 的 gpt-6.1-sol 追加：ultra
+  → 将向 C:\Users\<用户>\.dsh\profiles\desktop\cordis.patch.yml 的 gpt-6.1-sol 追加：max
   [写入 profile] [取消]
   → 已写入 …，重启 DSH 后生效。备份：…cordis.patch.yml.bak-2026-11-17T09-30-00-000Z
 ```
 
+如果 profile 里已经写了非法键，预览会同时列出要移除的键：
+
+```text
+将移除 gpt-6.1-sol 的非法档位键：ultra（DSH 只接受 off / minimal / low / medium / high / xhigh / max）
+将向 … 的 gpt-6.1-sol 追加：max
+```
+
 写入规则：
 
-- 只在该模型自己的 `reasoningEfforts:` 块里追加缺失档位，一项一行；
+- 只在该模型自己的 `reasoningEfforts:` 块里增删档位行，一项一行；
+- 非法键（如 `ultra`）会被移除；不移除的话该 provider 永远进不了模型目录；
+- 提案只会使用 `off/minimal/low/medium/high/xhigh/max` 里的键，不会写回 `ultra`；
 - provider、API 地址、其他模型、其他字段逐字节保持不变；
 - `reasoningEfforts: false` 就地替换为真实档位块；模型没有该块时在条目末尾新建；
 - 写入前 `copyFileSync` 到带时间戳的 `.bak-*`，备份失败则整次写入放弃；

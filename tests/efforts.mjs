@@ -41,25 +41,25 @@ const baseModel = (tiers, { falseFlag = false } = {}) => `- id: llm-pi-ai
   const file = fixture(baseModel(['low', 'medium', 'high', 'xhigh']));
   const preview = previewEfforts({ modelId: 'gpt-6.1-sol', file });
   assert.equal(preview.ok, true, 'a listed model previews');
-  assert.deepEqual(preview.value.add, ['ultra'], 'only the missing tier is proposed');
+  assert.deepEqual(preview.value.add, ['max'], 'only the missing tier is proposed');
   assert.deepEqual(preview.value.declared, ['low', 'medium', 'high', 'xhigh'], 'declared tiers are read in order');
   assert.equal(preview.value.needsRestart, true, 'a pending write asks for a restart');
-  assert.equal(readFileSync(file, 'utf8').includes('ultra: ultra'), false, 'preview writes nothing');
+  assert.equal((readFileSync(file, 'utf8').match(/max: max/g) ?? []).length, 1, 'preview writes nothing (only the Kimi row already declared max)');
 
   // apply
   const applied = applyEfforts({ modelId: 'gpt-6.1-sol', file });
   assert.equal(applied.ok, true);
   assert.equal(applied.value.written, true, 'apply reports the write');
-  assert.deepEqual(applied.value.added, ['ultra']);
+  assert.deepEqual(applied.value.added, ['max']);
   const text = readFileSync(file, 'utf8');
-  assert.ok(text.includes('              ultra: ultra\n'), 'the tier line lands at tier indentation');
+  assert.ok(text.includes('              max: max\n'), 'the tier line lands at tier indentation');
   assert.ok(text.includes('              xhigh: xhigh'), 'existing tiers are preserved');
   assert.ok(text.includes('          - id: kimi-k3'), 'the neighbouring model is untouched');
   assert.ok(text.includes('            contextWindow: 256000'), 'other fields are untouched');
 
   const backups = readdirSync(dir).filter(name => name.startsWith('cordis.patch.yml.bak-'));
   assert.equal(backups.length, 1, 'exactly one backup is written');
-  assert.ok(readFileSync(join(dir, backups[0]), 'utf8').includes('ultra: ultra') === false, 'the backup is the pre-change file');
+  assert.equal((readFileSync(join(dir, backups[0]), 'utf8').match(/max: max/g) ?? []).length, 1, 'the backup is the pre-change file');
 
   const again = previewEfforts({ modelId: 'gpt-6.1-sol', file });
   assert.deepEqual(again.value.add, [], 'a repaired model proposes nothing');
@@ -85,7 +85,7 @@ const baseModel = (tiers, { falseFlag = false } = {}) => `- id: llm-pi-ai
   const text = readFileSync(file, 'utf8');
   assert.ok(text.includes('            reasoningEfforts:\n              low: low\n'), 'a missing block is created at field indentation');
   assert.ok(text.includes('          - id: claude-sonnet-4-6'), 'the next model survives the insert');
-  assert.deepEqual(applied.value.added, ['low', 'medium', 'high', 'xhigh', 'ultra'], 'the GPT ladder is proposed whole');
+  assert.deepEqual(applied.value.added, ['low', 'medium', 'high', 'xhigh', 'max'], 'the GPT ladder is proposed whole');
 }
 
 // --------------------------------------------------------------------------- false flag
@@ -118,6 +118,41 @@ const baseModel = (tiers, { falseFlag = false } = {}) => `- id: llm-pi-ai
   assert.equal(patched.includes('reasoningEfforts: false'), false, 'the false flag is gone');
 }
 
+// --------------------------------------------------------------------------- illegal key removal
+// `ultra` is not one of DSH's THINKING_LEVELS: as a dict key it fails the schema and takes the whole
+// provider out of the model catalog. The repair has to remove it, not merely add beside it.
+{
+  const file = fixture(`- id: llm-pi-ai
+  config:
+    providers:
+      cpa:
+        models:
+          - id: gpt-6.1-sol
+            name: GPT-6.1 Sol
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+              ultra: ultra
+`, 'illegal.yml');
+  const preview = previewEfforts({ modelId: 'gpt-6.1-sol', file });
+  assert.deepEqual(preview.value.remove, ['ultra'], 'the illegal key is reported for removal');
+  assert.deepEqual(preview.value.add, ['max'], 'the legal top tier is still proposed');
+  assert.equal(preview.value.needsRestart, true);
+
+  const applied = applyEfforts({ modelId: 'gpt-6.1-sol', file });
+  assert.deepEqual(applied.value.removed, ['ultra']);
+  const patched = readFileSync(file, 'utf8');
+  assert.equal(patched.includes('ultra'), false, 'no illegal key survives the repair');
+  assert.ok(patched.includes('              max: max'), 'the legal tier is written');
+  assert.ok(patched.includes('              xhigh: xhigh'), 'legal tiers are kept');
+
+  const after = previewEfforts({ modelId: 'gpt-6.1-sol', file });
+  assert.deepEqual(after.value.remove, [], 'a repaired model reports nothing to remove');
+  assert.deepEqual(after.value.add, [], 'and nothing to add');
+}
+
 // --------------------------------------------------------------------------- errors
 {
   const file = fixture(baseModel(['low', 'high']), 'errors.yml');
@@ -141,4 +176,4 @@ const baseModel = (tiers, { falseFlag = false } = {}) => `- id: llm-pi-ai
 }
 
 rmSync(dir, { recursive: true, force: true });
-console.log('efforts ok: preview, apply, backup, no-op, false flag, missing block, errors');
+console.log('efforts ok: preview, apply, backup, no-op, false flag, missing block, illegal key removal, errors');

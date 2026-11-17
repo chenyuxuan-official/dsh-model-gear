@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.1
+
+- **修复 1.3.0 与 1.2.0 的导向错误**：`ultra` 不是 DSH 的合法档位键。`dsh-llm-pi-ai` 用 `z.dict(..., z.union(THINKING_LEVELS))` 校验，键只能是 `off/minimal/low/medium/high/xhigh/max`；写入 `ultra: ultra` 会让整个 provider 加载失败，模型目录里该 provider 的所有模型消失。插件与 README 不再建议写入 `ultra`，最高档位改为 `max`。
+- 一键修复新增**非法键移除**：预览同时列出要移除的键与要补的合法键，写入时先删非法行再插缺失行；只保留合法键时才算修好。新增回归测试 `illegal key removal`。
+- 档位修复提案全部收敛到合法集合：GPT/Codex→`low,medium,high,xhigh,max`；DeepSeek→`low,medium,high,max`；Kimi→`low,high,max`；其他→`low,medium,high`。
+- 档位诊断优先显示模型目录的 provider 失败信息（`state.failures`），provider 整体加载失败时直接给出宿主返回的原因，而不是笼统的“未暴露档位”。
+- 当前模型已暴露全部建议档位时不再显示修复入口。
+
 ## 1.3.0
 
 - **一键修复档位**：模型目录暴露的档位少于该模型系列常见配置时（例如 GPT 只有 `low/medium/high/xhigh`），强度面板会给出「查看档位修复方案」按钮。方案先预览（文件、要追加的档位），确认后才写入 profile 的 `cordis.patch.yml`，写入前生成带时间戳的备份，并提示重启 DSH 生效。

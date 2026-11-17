@@ -212,13 +212,17 @@ stateOverrides[0] = true;
 stateOverrides[1] = 'effort';
 const gptFixTree = captured.component(props);
 assert.equal(elementsWithClass(gptFixTree, 'cg-model-fix-button').length, 1, 'a GPT row without ultra offers the repair button');
-assert.match(textOf(gptFixTree), /缺少 ultra/, 'the diagnostic names the missing tier');
-snapshot.current = { provider: 'deepseek-account', model: 'deepseek-v4-flash', reasoningEffort: 'medium' };
+assert.match(textOf(gptFixTree), /还缺 max/, 'the diagnostic names the missing tier');
+// A row that already exposes its whole ladder is the negative case: three generic tiers are the
+// complete set for a model outside the GPT / DeepSeek / Kimi families.
+snapshot.groups[0].models.push({ id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', reasoning: { defaultEffort: 'high', efforts: [{ id: 'low' }, { id: 'medium' }, { id: 'high' }] } });
+snapshot.current = { provider: 'deepseek-account', model: 'claude-sonnet-4-6', reasoningEffort: 'high' };
 stateCursor = 0;
 stateOverrides[0] = true;
 stateOverrides[1] = 'effort';
 const noFixTree = captured.component(props);
 assert.equal(elementsWithClass(noFixTree, 'cg-model-fix-button').length, 0, 'a complete row shows no repair offer');
+snapshot.current = { provider: 'deepseek-account', model: 'deepseek-v4-flash', reasoningEffort: 'medium' };
 
 // The orchestration gear is back: the effort pane's top-left bolt exists, and the gear page lists all
 // three modes with the subagent budget each one promises. The gear is host state, so it is unread by

@@ -308,13 +308,13 @@ try {
 `, 'utf8');
   const previewBody = await post(route, { action: 'efforts-preview', sessionId: 'session-fast', modelId: 'gpt-6.1-sol', file: profileFile });
   assert.equal(previewBody.result.ok, true, 'the route answers the preview');
-  assert.deepEqual(previewBody.result.value.add, ['ultra'], 'the route proposes the missing tier');
-  assert.equal(readFileSync(profileFile, 'utf8').includes('ultra: ultra'), false, 'the preview did not write');
+  assert.deepEqual(previewBody.result.value.add, ['max'], 'the route proposes the missing tier');
+  assert.equal(readFileSync(profileFile, 'utf8').includes('max: max'), false, 'the preview did not write');
   const applyBody = await post(route, { action: 'efforts-apply', sessionId: 'session-fast', modelId: 'gpt-6.1-sol', file: profileFile });
   assert.equal(applyBody.result.ok, true, 'the route answers the apply');
   assert.equal(applyBody.result.value.written, true);
   assert.ok(existsSync(applyBody.result.value.backup), 'the backup path in the answer exists');
-  assert.ok(readFileSync(profileFile, 'utf8').includes('              ultra: ultra'), 'the tier reached the file');
+  assert.ok(readFileSync(profileFile, 'utf8').includes('              max: max'), 'the tier reached the file');
   const badEffort = await post(route, { action: 'efforts-preview', sessionId: 'session-fast', modelId: 'no-such-model', file: profileFile });
   assert.equal(badEffort.result.ok, false, 'an unknown model is a failure envelope, not a silent no-op');
   assert.deepEqual(badEffort.result.error.details !== undefined, true, 'effort failures carry details too');
